@@ -2,13 +2,13 @@
 
 import test  from 'blue-tape'
 
-import { PuppetMock } from './puppet-mock'
+import { PuppetGitter } from './puppet-gitter'
 
-class PuppetMockTest extends PuppetMock {
+class PuppetGitterTest extends PuppetGitter {
 }
 
-test('PuppetMock perfect restart testing', async (t) => {
-  const puppet = new PuppetMockTest()
+test('PuppetGitter perfect restart testing', async (t) => {
+  const puppet = new PuppetGitterTest()
   try {
 
     for (let i = 0; i < 3; i++) {
@@ -21,7 +21,7 @@ test('PuppetMock perfect restart testing', async (t) => {
       t.pass('start/stop-ed at #' + i)
     }
 
-    t.pass('PuppetMock() perfect restart pass.')
+    t.pass('PuppetGitter() perfect restart pass.')
   } catch (e) {
     t.fail(e)
   }

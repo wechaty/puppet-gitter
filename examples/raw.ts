@@ -22,7 +22,7 @@ async function main () {
   // const room = gitter.rooms.join('gitterhq/sandbox')
 
   const roomList = (await bot.rooms())
-    .filter(room => /^wechaty\/wechaty$/i.test(room.uri))
+    .filter(room => /^wechaty\/wechaty$/i.test(room.uri ?? ''))
 
   if (roomList.length <= 0) {
     throw new Error('room not found')
@@ -31,7 +31,7 @@ async function main () {
   const room = roomList[0]
   // console.info(room)
 
-  const r = await gitter.rooms.findByUri(room.uri)
+  const r = await gitter.rooms.findByUri(room.uri!)
   // const ret = await r.send('[Huan@Headquarters]:\nHelo~')
   // console.info(ret)
   /**
@@ -59,13 +59,16 @@ You will be very famous for creating this concept for our logo in the future, wh
   //   console.log(snapshot.length + ' messages in the snapshot');
   // });
 
+  r.subscribe()
   // The 'chatMessages' event is emitted on each new message
   r.on('chatMessages', function (message) {
     console.info(message)
+    console.info(message.model.mentions)
     console.info('A message was ' + message.operation)
     console.info('Text: ', message.model.text)
   })
 
+  await new Promise(resolve => setTimeout(resolve, 1000 * 1000))
 }
 
 main()

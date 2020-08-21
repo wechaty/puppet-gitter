@@ -66,18 +66,91 @@ declare module 'node-gitter' {
   class Client {}
   class Faye {}
 
+  /**
+   * Room Schema:
+   *  https://developer.gitter.im/docs/rooms-resource
+   */
   interface RoomPayload {
-    uri: string
+    id: string,
+    name: string,
+    topic: string,
+    oneToOne: boolean,
+    uri?: string,
+    user: {
+      id: string,
+      username: string,
+      displayName: string,
+      url: String,
+      avatarUrlSmall: string,
+      avatarUrlMedium: string
+    },
+    unreadItems: number,
+    mentions: number,
+    lurk: boolean,
+    url: string,
+
+    /**
+     * ORG: A room that represents a GitHub Organisation.
+     * REPO: A room that represents a GitHub Repository.
+     * ONETOONE: A one-to-one chat.
+     * ORG_CHANNEL: A Gitter channel nested under a GitHub Organisation.
+     * REPO_CHANNEL A Gitter channel nested under a GitHub Repository.
+     * USER_CHANNEL A Gitter channel nested under a GitHub User.
+     */
+    githubType: 'ORG'
+              | 'REPO'
+              | 'ONETOONE'
+              | 'ORG_CHANNEL'
+              | 'REPO_CHANNEL'
+              | 'USER_CHANNEL'
   }
 
+  /**
+   * User Schema:
+   *  https://developer.gitter.im/docs/user-resource
+   */
   interface UserPayload {
-    uri: string
+    id: string
+    username: string
+    displayName: string
+    url: string
+    avatarUrlSmall: string
+    avatarUrlMedium: string
   }
 
+  /**
+   * Message Schema:
+   *  https://developer.gitter.im/docs/messages-resource
+   */
   interface MessagePayload {
-    operation: string
+    operation: 'create' | 'update' | 'patch'
     model: {
-      text: string,
+      id: string
+      text: string
+      html: string
+      sent: string
+      editedAt?: string
+      fromUser: {
+        id: string
+        username: string
+        displayName: string
+        url: string
+        avatarUrl: string
+        avatarUrlSmall: string
+        avatarUrlMedium: string
+        v: number
+        gv: string
+      }
+      readBy: number
+      urls: {url : string}[]
+      mentions: {
+        screenName: string
+        userId: string
+        userIds: string[]
+      }[]
+      issues: Object[]
+      meta: Object[]
+      v: 1
     }
   }
 
