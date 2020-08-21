@@ -26,7 +26,7 @@ const SimpleEnvironment: () => EnvironmentMock = () => {
       clearInterval(timer)
     }
 
-    mocker.scan('https://github.com/wechaty/wechaty-puppet-mock', ScanStatus.Waiting)
+    mocker.scan('https://github.com/wechaty/wechaty-puppet-gitter', ScanStatus.Waiting)
 
     const user = mocker.createContact()
     mocker.login(user)

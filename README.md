@@ -1,138 +1,52 @@
-# PUPPET-MOCK
+# Wechaty Puppet Gitter
 
-[![NPM Version](https://badge.fury.io/js/wechaty-puppet-mock.svg)](https://badge.fury.io/js/wechaty-puppet-mock)
-[![npm (tag)](https://img.shields.io/npm/v/wechaty-puppet-mock/next.svg)](https://www.npmjs.com/package/wechaty-puppet-mock?activeTab=versions)
-[![NPM](https://github.com/wechaty/wechaty-puppet-mock/workflows/NPM/badge.svg)](https://github.com/wechaty/wechaty-puppet-mock/actions?query=workflow%3ANPM)
+[![NPM Version](https://badge.fury.io/js/wechaty-puppet-gitter.svg)](https://badge.fury.io/js/wechaty-puppet-gitter)
+[![npm (tag)](https://img.shields.io/npm/v/wechaty-puppet-gitter/next.svg)](https://www.npmjs.com/package/wechaty-puppet-gitter?activeTab=versions)
+[![NPM](https://github.com/wechaty/wechaty-puppet-gitter/workflows/NPM/badge.svg)](https://github.com/wechaty/wechaty-puppet-gitter/actions?query=workflow%3ANPM)
 
-![chatie puppet](https://wechaty.github.io/wechaty-puppet-mock/images/mock.png)
-
-> Picture Credit: <https://softwareautotools.com/2017/03/01/mocking-explained-in-python/>
+![wechaty puppet gitter](docs/images/wechaty-puppet-gitter.png)
 
 [![Powered by Wechaty](https://img.shields.io/badge/Powered%20By-Wechaty-brightgreen.svg)](https://github.com/wechaty/wechaty)
 [![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-blue.svg)](https://www.typescriptlang.org/)
 
-Puppet Mocker & Starter Template for Wechaty, it is very useful when you:
-
-1. Want to test the Wechaty framework with a mock puppet, or
-1. You want to write your own Puppet implenmentation.
-
-Then `PuppetMock` will helps you a lot.
+Puppet Gitter for <https://gitter.im>
+[![Gitter](https://badges.gitter.im/wechaty/wechaty.svg)](https://gitter.im/wechaty/wechaty?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 ## USAGE
 
-### Puppet Mock
+### Puppet Gitter
 
 ```ts
 import { Wechaty }   from 'wechaty'
-import { PuppetMock } from 'wechaty-puppet-mock'
+import { PuppetGitter } from 'wechaty-puppet-gitter'
 
-const puppet  = new PuppetMock()
+const puppet  = new PuppetGitter()
 const wechaty = new Wechaty({ puppet })
 
 wechaty.start()
 ```
 
-### Mocker & Environment
+## Resources
 
-```ts
-import {
-  PuppetMock,
-  Mocker,
-  SimpleEnvironment,
-}                     from 'wechaty-puppet-mock'
+1. [Gitter.im Developer Documents](https://developer.gitter.im/docs/welcome)
 
-const mocker = new Mocker()
-mocker.use(SimpleEnvironment())
+### GitHub Projects
 
-const puppet = new PuppetMock({ mocker })
-const wechaty = new Wechaty({ puppet })
-
-wechaty.start()
-
-// The Mocker will start perform the SimpleEnvironment...
-```
-
-See: [SimpleEnvironment](src/mocker/environment.ts)
-
-## API Reference
-
-### Mocker
-
-```ts
-import { Wechaty }  from 'wechaty'
-import { PuppetMock, mock }   from 'wechaty-puppet-mock'
-
-const mocker = new mock.Mocker()
-const puppet = new PuppetMock({ mocker })
-const bot = new Wechaty({ puppet })
-
-await bot.start()
-
-mocker.scan('https://github.com/wechaty', 1)
-
-const user = mocker.createContact()
-mocker.login(user)
-
-const contact = mocker.createContact()
-const room = mocker.createRoom()
-
-user.say('Hello').to(contact)
-contact.say('World').to(user)
-```
-
-## HELPER UTILITIES
-
-### StateSwitch
-
-```ts
-this.state.on('pending')
-this.state.on(true)
-this.state.off('pending')
-this.state.off(true)
-
-await this.state.ready('on')
-await this.state.ready('off')
-
-```
-
-### Watchdog
-
-```ts
-```
-
-### MemoryCard
-
-```ts
-await memory.set('config', { id: 1, key: 'xxx' })
-const config = await memory.get('config')
-console.log(config)
-// Output: { id: 1, key: 'xxx' }
-```
+1. [IRC ⚡ Gitter, https://irc.gitter.im](https://gitlab.com/gitlab-org/gitter/irc-bridge)
+1. [Bot that synchronises messages from gitter and irc](https://github.com/finnp/gitter-irc-bot)
+1. [Add a Integration feature for IRC (two-way sync between gitter room and a designated IRC channel)](https://gitlab.com/gitlab-org/gitter/webapp/-/issues/662)
+1. [Slack API: Enabling interactions with bots](https://api.slack.com/bot-users)
+1. [Matrix <-> Gitter bridge](https://github.com/matrix-org/matrix-appservice-gitter)
 
 ## HISTORY
 
 ### master
 
-### v0.25 (July 13, 2020)
-
-1. Rename `MockXXX` to `XXXMock` for keep the consistent naming style with `PuppetMock`.
-1. Export `mock` namespace and move all related modules under it.
-
-### v0.22 (June 4, 2020)
-
-`Mocker` Released. `Mocker` is a manager for controlling the behavior of the Puppet activities.
-
-1. Add `MockContact`, `MockRoom`, and `MockMessage` for `Mockers`
-1. Add `MockEnvironment` for mocking the server behaviors.
-1. Support `Wechaty#Contact.find()` from the `mocker.createContacts()`
-1. Support `Wechaty#Room.find()` from the `mocker.createRooms()`
-1. Support `message` event for `talker`, `listener`, and `room` of `MockMessage`
-
-### v0.0.1 (Jun 27, 2018)
+### v0.0.1 (Aug 21, 2020)
 
 Initial version.
 
-`PuppetMock` is a skelton Puppet without do anything, it will make testing easy when developing Wechaty
+`PuppetGitter` is a Gitter Puppet for <https://gitter.im>
 
 ## AUTHOR
 
@@ -144,6 +58,6 @@ Initial version.
 
 ## COPYRIGHT & LICENSE
 
-* Code & Docs © 2018 Huan LI \<zixia@zixia.net\>
+* Code & Docs © 2020-now Huan LI \<zixia@zixia.net\>
 * Code released under the Apache-2.0 License
 * Docs released under Creative Commons
