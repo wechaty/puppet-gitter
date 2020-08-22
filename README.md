@@ -8,9 +8,16 @@
 
 [![Powered by Wechaty](https://img.shields.io/badge/Powered%20By-Wechaty-brightgreen.svg)](https://github.com/wechaty/wechaty)
 [![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-blue.svg)](https://www.typescriptlang.org/)
-
-Puppet Gitter for <https://gitter.im>
 [![Gitter](https://badges.gitter.im/wechaty/wechaty.svg)](https://gitter.im/wechaty/wechaty?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+
+> Gitter is an open-source instant messaging and chat room system for developers and users of GitLab and GitHub repositories.  
+> &dash; [WikiPedia](https://en.wikipedia.org/wiki/Gitter)
+
+Wechaty Puppet for  Gitter: <https://gitter.im>
+
+## Feature
+
+1. Receive and send text messages in Gitter.im rooms.
 
 ## USAGE
 
@@ -30,10 +37,10 @@ import { PuppetGitter } from 'wechaty-puppet-gitter'
  * Personal Access Token: this token can be used to access the Gitter API.
  *  https://developer.gitter.im/apps
  */
-const puppet  = new PuppetGitter({ token: 'your_gitter_token_from_developer_portal' })
+const puppet  = new PuppetGitter({ token: 'your_gitter_token' })
 const wechaty = new Wechaty({ puppet })
 
-wechaty.start()
+await wechaty.start()
 ```
 
 ### Environment Variables
