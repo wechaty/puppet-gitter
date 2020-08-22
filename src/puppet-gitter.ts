@@ -105,6 +105,7 @@ class PuppetGitter extends Puppet {
 
     try {
       const gitter = new Gitter(this.token)
+      this._gitter = gitter
 
       const currentUser = await gitter.currentUser()
       await this.login(currentUser.id)
@@ -112,7 +113,6 @@ class PuppetGitter extends Puppet {
       await this.bridgeEvents(gitter)
 
       this.state.on(true)
-      this._gitter = gitter
 
     } catch (e) {
       log.error('PuppetGitter', 'start() rejection %s', e)
