@@ -63,7 +63,7 @@ The `wechaty-puppet-gitter` will search the environment variable named `WECHATY_
 
 ### master
 
-### v0.0.1 (Aug 21, 2020)
+### v0.2.1 (Aug 21, 2020)
 
 Initial version.
 
