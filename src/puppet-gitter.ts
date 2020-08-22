@@ -539,11 +539,25 @@ class PuppetGitter extends Puppet {
     const gitterRoom = await this.gitter.rooms.find(id)
     if (!gitterRoom) { throw Error('rooRawPayload can not load payload for id ' + id) }
 
-    const newPayload = {} as any
-    for (const key in gitterRoom) {
-      if (typeof (gitterRoom as any)[key] !== 'function') {
-        newPayload[key] = (gitterRoom as any)[key]
-      }
+    const newPayload = {
+      githubType  : gitterRoom.githubType,
+      id          : gitterRoom.id,
+      lurk        : gitterRoom.lurk,
+      mentions    : gitterRoom.mentions,
+      name        : gitterRoom.name,
+      oneToOne    : gitterRoom.oneToOne,
+      topic       : gitterRoom.topic,
+      unreadItems : gitterRoom.unreadItems,
+      uri         : gitterRoom.uri,
+      url         : gitterRoom.url,
+      user: gitterRoom.user ? {
+        avatarUrlMedium : gitterRoom.user.avatarUrlMedium,
+        avatarUrlSmall  : gitterRoom.user.avatarUrlSmall,
+        displayName     : gitterRoom.user.displayName,
+        id              : gitterRoom.user.id,
+        url             : gitterRoom.user.url,
+        username        : gitterRoom.user.username,
+      } : undefined,
     }
 
     await this.rawCache.roomPayloads.set(id, newPayload)
