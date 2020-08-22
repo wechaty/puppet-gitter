@@ -137,7 +137,7 @@ class PuppetGitter extends Puppet {
       gitterRoom.subscribe()
       this.cleanerCallbackList.push(() => gitterRoom.unsubscribe())
 
-      const cacheMessagePayload = async (payload: Gitter.MessagePayload) => {
+      const onChatMessage = async (payload: Gitter.MessagePayload) => {
         if (payload.operation !== 'create') { return }
         await this.rawCache.messagePayloads.set(payload.model.id, {
           ...payload.model,
@@ -157,8 +157,8 @@ class PuppetGitter extends Puppet {
         }
 
       }
-      gitterRoom.on('chatMessages', cacheMessagePayload)
-      this.cleanerCallbackList.push(() => gitterRoom.off('chatMessages', cacheMessagePayload))
+      gitterRoom.on('chatMessages', onChatMessage)
+      this.cleanerCallbackList.push(() => gitterRoom.off('chatMessages', onChatMessage))
     }
 
   }

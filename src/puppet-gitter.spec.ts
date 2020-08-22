@@ -11,7 +11,7 @@ test('PuppetGitter perfect restart testing', async (t) => {
   const puppet = new PuppetGitterTest()
   try {
 
-    for (let i = 0; i < 1; i++) {
+    for (let i = 0; i < 3; i++) {
       await puppet.start()
       t.true(puppet.state.on(), 'should be turned on after start()')
 

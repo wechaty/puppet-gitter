@@ -10,7 +10,7 @@ async function main () {
     throw new Error('version should not be 0.0.0 when prepare for publishing')
   }
 
-  const puppet = new PuppetGitter()
+  const puppet = new PuppetGitter({ token: 'dummy' })
   console.info(`Puppet v${puppet.version()} smoke testing passed.`)
   return 0
 }

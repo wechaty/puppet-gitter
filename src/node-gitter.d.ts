@@ -54,7 +54,7 @@ declare module 'node-gitter' {
   interface Room extends RoomPayload {}
   class Room extends RoomEventEmitter {
 
-    constructor (attrs: Object, client: Client, faye: Faye, usersResource: User)
+    constructor (attrs: Object, public client: Client, public faye: Faye, usersResource: User)
 
     findAll (): Promise<RoomPayload[]>
     find (id: string): Promise<Room>

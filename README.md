@@ -14,17 +14,31 @@ Puppet Gitter for <https://gitter.im>
 
 ## USAGE
 
+The `wechaty-puppet-gitter` needs a TOKEN and only one token from gitter so that it can connect to the gitter.im service.
+
+> Learn more about the TOKEN from gitter.im at <https://developer.gitter.im/apps>
+
+You can pass the token to this puppet by putting it into `options`, or by setting the environment variable `WECHATY_PUPPET_GITTER_TOKEN`.
+
 ### Puppet Gitter
 
 ```ts
 import { Wechaty }   from 'wechaty'
 import { PuppetGitter } from 'wechaty-puppet-gitter'
 
-const puppet  = new PuppetGitter()
+/**
+ * Personal Access Token: this token can be used to access the Gitter API.
+ *  https://developer.gitter.im/apps
+ */
+const puppet  = new PuppetGitter({ token: 'your_gitter_token_from_developer_portal' })
 const wechaty = new Wechaty({ puppet })
 
 wechaty.start()
 ```
+
+### Environment Variables
+
+The `wechaty-puppet-gitter` will search the environment variable named `WECHATY_PUPPET_GITTER_TOKEN` to get the token if you do not set it in the `options`.
 
 ## Resources
 
