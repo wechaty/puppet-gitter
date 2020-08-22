@@ -43,7 +43,7 @@ const wechaty = new Wechaty({ puppet })
 await wechaty.start()
 ```
 
-### Environment Variables
+### Environment Variable: `WECHATY_PUPPET_GITTER_TOKEN`
 
 The `wechaty-puppet-gitter` will search the environment variable named `WECHATY_PUPPET_GITTER_TOKEN` to get the token if you do not set it in the `options`.
 
