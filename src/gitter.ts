@@ -2,4 +2,12 @@
 
 import Gitter from 'node-gitter'
 
-export { Gitter }
+type MessageModelPayload = Gitter.MessagePayload['model']
+
+export interface GitterRoomMessagePayload extends MessageModelPayload {
+  roomId: string
+}
+
+export {
+  Gitter,
+}

@@ -21,7 +21,6 @@ cd $TMPDIR
 npm init -y
 npm install ./*-*.*.*.tgz \
   @chatie/tsconfig \
-  @types/quick-lru \
   \
   "wechaty-puppet@$NPM_TAG" \
   "wechaty@$NPM_TAG" \

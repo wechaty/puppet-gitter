@@ -19,19 +19,19 @@
 import {
   EventLogoutPayload,
   EventLoginPayload,
-  EventScanPayload,
   EventErrorPayload,
   EventMessagePayload,
+  MessageType,
 }                         from 'wechaty-puppet'
 
-import { PuppetMock } from '../src/mod'
+import { PuppetGitter } from '../src/mod'
 
 /**
  *
  * 1. Declare your Bot!
  *
  */
-const puppet = new PuppetMock()
+const puppet = new PuppetGitter()
 
 /**
  *
@@ -41,7 +41,6 @@ const puppet = new PuppetMock()
 puppet
   .on('logout', onLogout)
   .on('login',  onLogin)
-  .on('scan',   onScan)
   .on('error',  onError)
   .on('message', onMessage)
 
@@ -69,23 +68,9 @@ puppet.start()
  *  `scan`, `login`, `logout`, `error`, and `message`
  *
  */
-function onScan (payload: EventScanPayload) {
-  if (payload.qrcode) {
-    // Generate a QR Code online via
-    // http://goqr.me/api/doc/create-qr-code/
-    const qrcodeImageUrl = [
-      'https://api.qrserver.com/v1/create-qr-code/?data=',
-      encodeURIComponent(payload.qrcode),
-    ].join('')
-    console.info(`[${payload.status}] ${qrcodeImageUrl}\nScan QR Code above to log in: `)
-  } else {
-    console.info(`[${payload.status}]`)
-  }
-}
-
 function onLogin (payload: EventLoginPayload) {
   console.info(`${payload.contactId} login`)
-  puppet.messageSendText(payload.contactId, 'Wechaty login').catch(console.error)
+  // puppet.messageSendText(payload.contactId, 'Wechaty login').catch(console.error)
 }
 
 function onLogout (payload: EventLogoutPayload) {
@@ -109,7 +94,19 @@ function onError (payload: EventErrorPayload) {
  */
 async function onMessage (payload: EventMessagePayload) {
   const msgPayload = await puppet.messagePayload(payload.messageId)
-  console.info(JSON.stringify(msgPayload))
+  console.info(msgPayload)
+
+  const talkerId = msgPayload.fromId!
+  const talkerPayload = await puppet.contactPayload(talkerId)
+  console.info(talkerPayload)
+
+  if (msgPayload.type === MessageType.Text
+    && msgPayload.text
+    && /ding/i.test(msgPayload.text)
+    && msgPayload.roomId
+  ) {
+    await puppet.messageSendText(msgPayload.roomId, 'dong')
+  }
 }
 
 /**

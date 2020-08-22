@@ -22,6 +22,7 @@ test('PuppetGitter perfect restart testing', async (t) => {
     }
 
     t.pass('PuppetGitter() perfect restart pass.')
+
   } catch (e) {
     t.fail(e)
   }

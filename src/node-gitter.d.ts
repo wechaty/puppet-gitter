@@ -28,9 +28,16 @@ declare module 'node-gitter' {
 
   }
 
+  /**
+   * Huan(20200822): write an interface that merges with the class:
+   *  https://stackoverflow.com/a/51937677/1123955
+   */
+  interface User extends UserPayload {}
   class User {
 
-    current (attrs: Object, client: Client, faye: Faye): User
+    constructor (attrs: Object, public client: Client, public faye: Faye): User
+
+    current (): Promise<User>
 
     find (id: string): Promise<UserPayload>
     findById (id: string): Promise<User>
@@ -44,11 +51,12 @@ declare module 'node-gitter' {
 
   }
 
+  interface Room extends RoomPayload {}
   class Room extends RoomEventEmitter {
 
     constructor (attrs: Object, client: Client, faye: Faye, usersResource: User)
 
-    findAll (): Promise<Object>
+    findAll (): Promise<RoomPayload[]>
     find (id: string): Promise<Room>
     findByUri (roomUri: string): Promise<Room>
     join (roomUri: string): Promise<Room>
@@ -64,19 +72,27 @@ declare module 'node-gitter' {
   }
 
   class Client {}
-  class Faye {}
+  class Faye {
+
+    client: {
+      disconnect (): Promise<void>
+    }
+
+    disconnect (): void
+
+  }
 
   /**
    * Room Schema:
    *  https://developer.gitter.im/docs/rooms-resource
    */
-  interface RoomPayload {
+  export interface RoomPayload {
     id: string,
     name: string,
     topic: string,
     oneToOne: boolean,
     uri?: string,
-    user: {
+    user?: {
       id: string,
       username: string,
       displayName: string,
@@ -109,20 +125,23 @@ declare module 'node-gitter' {
    * User Schema:
    *  https://developer.gitter.im/docs/user-resource
    */
-  interface UserPayload {
-    id: string
-    username: string
-    displayName: string
-    url: string
-    avatarUrlSmall: string
-    avatarUrlMedium: string
+  export interface UserPayload {
+    avatarUrl       : string
+    avatarUrlMedium : string
+    avatarUrlSmall  : string
+    displayName     : string
+    gv              : string
+    id              : string
+    url             : string
+    username        : string
+    v               : number
   }
 
   /**
    * Message Schema:
    *  https://developer.gitter.im/docs/messages-resource
    */
-  interface MessagePayload {
+  export interface MessagePayload {
     operation: 'create' | 'update' | 'patch'
     model: {
       id: string
@@ -130,17 +149,7 @@ declare module 'node-gitter' {
       html: string
       sent: string
       editedAt?: string
-      fromUser: {
-        id: string
-        username: string
-        displayName: string
-        url: string
-        avatarUrl: string
-        avatarUrlSmall: string
-        avatarUrlMedium: string
-        v: number
-        gv: string
-      }
+      fromUser: UserPayload
       readBy: number
       urls: {url : string}[]
       mentions: {

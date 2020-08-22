@@ -40,52 +40,59 @@ import {
   MiniProgramPayload,
 
   log,
+  ContactGender,
+  ContactType,
+  MessageType,
+  PayloadType,
+  throwUnsupportedError,
 }                           from 'wechaty-puppet'
+
+import {
+  Gitter,
+  GitterRoomMessagePayload,
+}                             from './gitter'
 
 import {
   CHATIE_OFFICIAL_ACCOUNT_QRCODE,
   qrCodeForChatie,
   VERSION,
 }                                   from './config'
+import { RawCache } from './raw-cache'
 
-// import { Attachment } from './mock/user/types'
-
-import {
-  Mocker,
-  // ContactMock,
-}                     from './mock/mod'
-// import { UrlLink, MiniProgram } from 'wechaty'
-
-export type PuppetGitterOptions = PuppetOptions & {
-  mocker?: Mocker,
-}
+export type PuppetGitterOptions = PuppetOptions
 
 class PuppetGitter extends Puppet {
 
-  public static readonly VERSION = VERSION
+  static readonly VERSION = VERSION
 
-  private loopTimer?: NodeJS.Timer
+  private token : string
 
-  public mocker: Mocker
+  private get gitter () { return this._gitter! }
+  private _gitter?: Gitter
+
+  private get rawCache () { return this._rawCache! }
+  private _rawCache?: RawCache
+
+  private cleanerCallbackList: (() => void)[]
 
   constructor (
-    public options: PuppetGitterOptions = {},
+    options: PuppetGitterOptions = {},
   ) {
     super(options)
-    log.verbose('PuppetGitter', 'constructor()')
+    log.verbose('PuppetGitter', 'constructor(%s)', JSON.stringify(options))
 
-    if (options.mocker) {
-      log.verbose('PuppetGitter', 'constructor() use options.mocker')
-      this.mocker = options.mocker
+    if (options.token) {
+      this.token = options.token
+    } else if (process.env.WECHATY_PUPPET_GITTER_TOKEN) {
+      this.token = process.env.WECHATY_PUPPET_GITTER_TOKEN
     } else {
-      log.verbose('PuppetGitter', 'constructor() creating the default mocker')
-      this.mocker = new Mocker()
-      // this.mocker.use(SimpleBehavior())
+      throw new Error('wechaty-puppet-gitter need a gitter token')
     }
-    this.mocker.puppet = this
+
+    this.cleanerCallbackList = []
   }
 
-  public async start (): Promise<void> {
+  async start (): Promise<void> {
     log.verbose('PuppetGitter', 'start()')
 
     if (this.state.on()) {
@@ -96,17 +103,67 @@ class PuppetGitter extends Puppet {
 
     this.state.on('pending')
 
-    // Do some async initializing tasks
+    try {
+      const gitter = new Gitter(this.token)
 
-    this.state.on(true)
+      const currentUser = await gitter.currentUser()
+      await this.login(currentUser.id)
 
-    /**
-     * Start mocker after the puppet fully turned ON.
-     */
-    setImmediate(() => this.mocker.start())
+      await this.bridgeEvents(gitter)
+
+      this.state.on(true)
+      this._gitter = gitter
+
+    } catch (e) {
+      log.error('PuppetGitter', 'start() rejection %s', e)
+      console.error(e)
+      this.state.off(true)
+    }
   }
 
-  public async stop (): Promise<void> {
+  private async bridgeEvents (gitter: Gitter): Promise<void> {
+    log.verbose('PuppetGitter', 'bridgeEvents()')
+
+    const gitterRoomPayloadList = await gitter.rooms.findAll()
+    const gitterRoomList = await Promise.all(
+      gitterRoomPayloadList
+        .map(payload => gitter.rooms.find(payload.id))
+    )
+
+    /**
+     * Subscribe to all room message events
+     */
+    for (const gitterRoom of gitterRoomList) {
+      gitterRoom.subscribe()
+      this.cleanerCallbackList.push(() => gitterRoom.unsubscribe())
+
+      const cacheMessagePayload = async (payload: Gitter.MessagePayload) => {
+        if (payload.operation !== 'create') { return }
+        await this.rawCache.messagePayloads.set(payload.model.id, {
+          ...payload.model,
+          roomId: gitterRoom.id,
+        })
+        this.emit('message', { messageId: payload.model.id })
+
+        /**
+          * Huan(202008): Gitter API seems does not permit to get user payload from API,
+          *   so we store it when we received a message from the message payload
+          */
+        if ('fromUser' in payload.model) {
+          const userPayload = payload.model.fromUser as Gitter.UserPayload
+          if (!this.cacheContactPayload.has(userPayload.id)) {
+            await this.rawCache.contactPayloads.set(userPayload.id, userPayload)
+          }
+        }
+
+      }
+      gitterRoom.on('chatMessages', cacheMessagePayload)
+      this.cleanerCallbackList.push(() => gitterRoom.off('chatMessages', cacheMessagePayload))
+    }
+
+  }
+
+  async stop (): Promise<void> {
     log.verbose('PuppetGitter', 'stop()')
 
     if (this.state.off()) {
@@ -117,49 +174,62 @@ class PuppetGitter extends Puppet {
 
     this.state.off('pending')
 
-    if (this.loopTimer) {
-      clearInterval(this.loopTimer)
+    try {
+      while (this.cleanerCallbackList.length > 0) {
+        const clearnerCallback = this.cleanerCallbackList.pop()
+        if (clearnerCallback) {
+          await clearnerCallback()
+        }
+      }
+
+      /**
+        * Huan(202008): clean faye timer and intervals
+        */
+      this.gitter.faye.disconnect()
+      await this.gitter.faye.client.disconnect()
+
+      if (this.logonoff()) {
+        await this.logout()
+      }
+
+    } finally {
+      this.state.off(true)
     }
 
-    this.mocker.stop()
-
-    if (this.logonoff()) {
-      await this.logout()
-    }
-
-    // await some tasks...
-    this.state.off(true)
   }
 
-  public login (contactId: string): Promise<void> {
-    log.verbose('PuppetGitter', 'login()')
-    return super.login(contactId)
+  async login (userId: string): Promise<void> {
+    log.verbose('PuppetGitter', 'login(%s)', userId)
+
+    const rawCache = new RawCache(
+      this.constructor.name,
+      userId,
+    )
+    await rawCache.start()
+    this._rawCache = rawCache
+
+    return super.login(userId)
   }
 
-  public async logout (): Promise<void> {
+  async logout (): Promise<void> {
     log.verbose('PuppetGitter', 'logout()')
 
-    if (!this.id) {
-      throw new Error('logout before login?')
+    await super.logout()
+
+    if (this._rawCache) {
+      await this._rawCache.stop()
+      this._rawCache = undefined
     }
-
-    this.emit('logout', { contactId: this.id, data: 'test' }) // before we will throw above by logonoff() when this.user===undefined
-    this.id = undefined
-
-    // TODO: do the logout job
   }
 
-  public ding (data?: string): void {
+  ding (data?: string): void {
     log.silly('PuppetGitter', 'ding(%s)', data || '')
     setTimeout(() => this.emit('dong', { data: data || '' }), 1000)
   }
 
-  public unref (): void {
+  unref (): void {
     log.verbose('PuppetGitter', 'unref()')
     super.unref()
-    if (this.loopTimer) {
-      this.loopTimer.unref()
-    }
   }
 
   /**
@@ -168,16 +238,16 @@ class PuppetGitter extends Puppet {
    *
    *
    */
-  public async contactSelfQRCode (): Promise<string> {
+  async contactSelfQRCode (): Promise<string> {
     log.verbose('PuppetGitter', 'contactSelfQRCode()')
     return CHATIE_OFFICIAL_ACCOUNT_QRCODE
   }
 
-  public async contactSelfName (name: string): Promise<void> {
+  async contactSelfName (name: string): Promise<void> {
     log.verbose('PuppetGitter', 'contactSelfName(%s)', name)
   }
 
-  public async contactSelfSignature (signature: string): Promise<void> {
+  async contactSelfSignature (signature: string): Promise<void> {
     log.verbose('PuppetGitter', 'contactSelfSignature(%s)', signature)
   }
 
@@ -186,10 +256,10 @@ class PuppetGitter extends Puppet {
    * Contact
    *
    */
-  public contactAlias (contactId: string)                      : Promise<string>
-  public contactAlias (contactId: string, alias: string | null): Promise<void>
+  contactAlias (contactId: string)                      : Promise<string>
+  contactAlias (contactId: string, alias: string | null): Promise<void>
 
-  public async contactAlias (contactId: string, alias?: string | null): Promise<void | string> {
+  async contactAlias (contactId: string, alias?: string | null): Promise<void | string> {
     log.verbose('PuppetGitter', 'contactAlias(%s, %s)', contactId, alias)
 
     if (typeof alias === 'undefined') {
@@ -197,12 +267,13 @@ class PuppetGitter extends Puppet {
     }
   }
 
-  public async contactList (): Promise<string[]> {
+  async contactList (): Promise<string[]> {
     log.verbose('PuppetGitter', 'contactList()')
-    return [...this.mocker.cacheContactPayload.keys()]
+
+    return [...this.cacheContactPayload.keys()]
   }
 
-  public async contactQRCode (contactId: string): Promise<string> {
+  async contactQRCode (contactId: string): Promise<string> {
     log.verbose('PuppetGitter', 'contactQRCode(%s)', contactId)
     if (contactId !== this.selfId()) {
       throw new Error('can not set avatar for others')
@@ -212,10 +283,10 @@ class PuppetGitter extends Puppet {
     // return await this.bridge.WXqr
   }
 
-  public async contactAvatar (contactId: string)                : Promise<FileBox>
-  public async contactAvatar (contactId: string, file: FileBox) : Promise<void>
+  async contactAvatar (contactId: string)                : Promise<FileBox>
+  async contactAvatar (contactId: string, file: FileBox) : Promise<void>
 
-  public async contactAvatar (contactId: string, file?: FileBox): Promise<void | FileBox> {
+  async contactAvatar (contactId: string, file?: FileBox): Promise<void | FileBox> {
     log.verbose('PuppetGitter', 'contactAvatar(%s)', contactId)
 
     /**
@@ -232,10 +303,45 @@ class PuppetGitter extends Puppet {
     return FileBox.fromFile(WECHATY_ICON_PNG)
   }
 
-  public async contactRawPayloadParser (payload: ContactPayload) { return payload }
-  public async contactRawPayload (id: string): Promise<ContactPayload> {
+  public async contactPhone (contactId: string, phoneList: string[]): Promise<void> {
+    throwUnsupportedError(contactId, phoneList)
+  }
+
+  public async contactCorporationRemark (contactId: string, corporationRemark: string | null) : Promise<void> {
+    throwUnsupportedError(contactId, corporationRemark)
+  }
+
+  public async contactDescription (contactId: string, description: string | null): Promise<void> {
+    throwUnsupportedError(contactId, description)
+  }
+
+  async contactRawPayloadParser (rawPayload: Gitter.UserPayload): Promise<ContactPayload> {
+    log.silly('PuppetGitter', 'contactRawPayload(%s)', rawPayload)
+
+    const payload: ContactPayload = {
+      avatar : rawPayload.avatarUrlMedium,
+      gender : ContactGender.Unknown,
+      id     : rawPayload.id,
+      name   : rawPayload.displayName,
+      phone  : [],
+      type   : ContactType.Individual,
+      weixin : rawPayload.username,
+    }
+
+    return payload
+  }
+
+  async contactRawPayload (id: string): Promise<Gitter.UserPayload> {
     log.verbose('PuppetGitter', 'contactRawPayload(%s)', id)
-    return this.mocker.contactPayload(id)
+
+    let rawPayload = await this.rawCache.contactPayloads.get(id)
+    if (rawPayload) { return rawPayload }
+
+    rawPayload = await this.gitter.users.find(id)
+    if (!rawPayload) { throw new Error('contactRawPayload can not load id ' + id) }
+
+    await this.rawCache.contactPayloads.set(id, rawPayload)
+    return rawPayload
   }
 
   /**
@@ -243,7 +349,7 @@ class PuppetGitter extends Puppet {
    * Message
    *
    */
-  public async messageContact (
+  async messageContact (
     messageId: string,
   ): Promise<string> {
     log.verbose('PuppetGitter', 'messageContact(%s)', messageId)
@@ -254,7 +360,7 @@ class PuppetGitter extends Puppet {
     return ''
   }
 
-  public async messageImage (
+  async messageImage (
     messageId: string,
     imageType: ImageType,
   ) : Promise<FileBox> {
@@ -270,14 +376,14 @@ class PuppetGitter extends Puppet {
     return FileBox.fromQRCode('fake-qrcode')
   }
 
-  public async messageRecall (
+  async messageRecall (
     messageId: string,
   ): Promise<boolean> {
     log.verbose('PuppetGitter', 'messageRecall(%s)', messageId)
     return false
   }
 
-  public async messageFile (id: string): Promise<FileBox> {
+  async messageFile (id: string): Promise<FileBox> {
     // const attachment = this.mocker.MockMessage.loadAttachment(id)
     // if (attachment instanceof FileBox) {
     //   return attachment
@@ -288,7 +394,7 @@ class PuppetGitter extends Puppet {
     )
   }
 
-  public async messageUrl (messageId: string)  : Promise<UrlLinkPayload> {
+  async messageUrl (messageId: string)  : Promise<UrlLinkPayload> {
     log.verbose('PuppetGitter', 'messageUrl(%s)', messageId)
     // const attachment = this.mocker.MockMessage.loadAttachment(messageId)
     // if (attachment instanceof UrlLink) {
@@ -300,7 +406,7 @@ class PuppetGitter extends Puppet {
     }
   }
 
-  public async messageMiniProgram (messageId: string): Promise<MiniProgramPayload> {
+  async messageMiniProgram (messageId: string): Promise<MiniProgramPayload> {
     log.verbose('PuppetGitter', 'messageMiniProgram(%s)', messageId)
     // const attachment = this.mocker.MockMessage.loadAttachment(messageId)
     // if (attachment instanceof MiniProgram) {
@@ -311,10 +417,28 @@ class PuppetGitter extends Puppet {
     }
   }
 
-  public async messageRawPayloadParser (payload: MessagePayload) { return payload }
-  public async messageRawPayload (id: string): Promise<MessagePayload> {
+  async messageRawPayloadParser (rawPayload: GitterRoomMessagePayload): Promise<MessagePayload> {
+    log.silly('PuppetGitter', 'messageRawPayloadParser(%s)', JSON.stringify(rawPayload))
+
+    const payload: MessagePayload = {
+      fromId        : rawPayload.fromUser.id,
+      id            : rawPayload.id,
+      mentionIdList : rawPayload.mentions.map(m => m.userId),
+      roomId        : rawPayload.roomId!,
+      text          : rawPayload.text,
+      timestamp     : Date.now(),
+      type          : MessageType.Text,
+    }
+    return payload
+  }
+
+  async messageRawPayload (id: string): Promise<GitterRoomMessagePayload> {
     log.verbose('PuppetGitter', 'messageRawPayload(%s)', id)
-    return this.mocker.messagePayload(id)
+
+    const rawPayload = await this.rawCache.messagePayloads.get(id)
+    if (rawPayload) { return rawPayload }
+
+    throw new Error('messageRawPayload can not find payload for ' + id)
   }
 
   private async messageSend (
@@ -326,33 +450,31 @@ class PuppetGitter extends Puppet {
       throw new Error('no this.id')
     }
 
-    const user = this.mocker.ContactMock.load(this.id)
-    let conversation
-
-    if (/@/.test(conversationId)) {
-      // FIXME: extend a new puppet method messageRoomSendText, etc, for Room message?
-      conversation = this.mocker.RoomMock.load(conversationId)
-    } else {
-      conversation = this.mocker.ContactMock.load(conversationId)
+    if (typeof something === 'string') {
+      const room = await this.gitter.rooms.find(conversationId)
+      if (!room) {
+        throw new Error('gitter room not found for conversationId ' + conversationId)
+      }
+      await room.send(something)
     }
-    user.say(something).to(conversation)
+
   }
 
-  public async messageSendText (
+  async messageSendText (
     conversationId: string,
     text     : string,
   ): Promise<void> {
     return this.messageSend(conversationId, text)
   }
 
-  public async messageSendFile (
+  async messageSendFile (
     conversationId: string,
     file     : FileBox,
   ): Promise<void> {
     return this.messageSend(conversationId, file)
   }
 
-  public async messageSendContact (
+  async messageSendContact (
     conversationId: string,
     contactId : string,
   ): Promise<void> {
@@ -362,7 +484,7 @@ class PuppetGitter extends Puppet {
     // return this.messageSend(conversationId, contact)
   }
 
-  public async messageSendUrl (
+  async messageSendUrl (
     conversationId: string,
     urlLinkPayload: UrlLinkPayload,
   ) : Promise<void> {
@@ -372,7 +494,7 @@ class PuppetGitter extends Puppet {
     // return this.messageSend(conversationId, url)
   }
 
-  public async messageSendMiniProgram (
+  async messageSendMiniProgram (
     conversationId: string,
     miniProgramPayload: MiniProgramPayload,
   ): Promise<void> {
@@ -381,7 +503,7 @@ class PuppetGitter extends Puppet {
     // return this.messageSend(conversationId, miniProgram)
   }
 
-  public async messageForward (
+  async messageForward (
     conversationId: string,
     messageId : string,
   ): Promise<void> {
@@ -396,25 +518,52 @@ class PuppetGitter extends Puppet {
    * Room
    *
    */
-  public async roomRawPayloadParser (payload: RoomPayload) { return payload }
-  public async roomRawPayload (id: string): Promise<RoomPayload> {
+  async roomRawPayloadParser (rawPayload: Gitter.RoomPayload): Promise<RoomPayload> {
+    const payload: RoomPayload = {
+      adminIdList  : [],
+      avatar       : undefined,
+      id           : rawPayload.id,
+      memberIdList : [],
+      ownerId      : undefined,
+      topic        : rawPayload.name,
+    }
+    return payload
+  }
+
+  async roomRawPayload (id: string): Promise<Gitter.RoomPayload> {
     log.verbose('PuppetGitter', 'roomRawPayload(%s)', id)
-    return this.mocker.roomPayload(id)
+
+    const rawPayload = await this.rawCache.roomPayloads.get(id)
+    if (rawPayload) { return rawPayload }
+
+    const gitterRoom = await this.gitter.rooms.find(id)
+    if (!gitterRoom) { throw Error('rooRawPayload can not load payload for id ' + id) }
+
+    const newPayload = {} as any
+    for (const key in gitterRoom) {
+      if (typeof (gitterRoom as any)[key] !== 'function') {
+        newPayload[key] = (gitterRoom as any)[key]
+      }
+    }
+
+    await this.rawCache.roomPayloads.set(id, newPayload)
+    return newPayload
   }
 
-  public async roomList (): Promise<string[]> {
+  async roomList (): Promise<string[]> {
     log.verbose('PuppetGitter', 'roomList()')
-    return [...this.mocker.cacheRoomPayload.keys()]
+    const list = await this.gitter.rooms.findAll()
+    return list.map(l => l.id)
   }
 
-  public async roomDel (
+  async roomDel (
     roomId    : string,
     contactId : string,
   ): Promise<void> {
     log.verbose('PuppetGitter', 'roomDel(%s, %s)', roomId, contactId)
   }
 
-  public async roomAvatar (roomId: string): Promise<FileBox> {
+  async roomAvatar (roomId: string): Promise<FileBox> {
     log.verbose('PuppetGitter', 'roomAvatar(%s)', roomId)
 
     const payload = await this.roomPayload(roomId)
@@ -426,17 +575,17 @@ class PuppetGitter extends Puppet {
     return qrCodeForChatie()
   }
 
-  public async roomAdd (
+  async roomAdd (
     roomId    : string,
     contactId : string,
   ): Promise<void> {
     log.verbose('PuppetGitter', 'roomAdd(%s, %s)', roomId, contactId)
   }
 
-  public async roomTopic (roomId: string)                : Promise<string>
-  public async roomTopic (roomId: string, topic: string) : Promise<void>
+  async roomTopic (roomId: string)                : Promise<string>
+  async roomTopic (roomId: string, topic: string) : Promise<void>
 
-  public async roomTopic (
+  async roomTopic (
     roomId: string,
     topic?: string,
   ): Promise<void | string> {
@@ -446,10 +595,10 @@ class PuppetGitter extends Puppet {
       return 'mock room topic'
     }
 
-    await this.roomPayloadDirty(roomId)
+    await this.dirtyPayload(PayloadType.Room, roomId)
   }
 
-  public async roomCreate (
+  async roomCreate (
     contactIdList : string[],
     topic         : string,
   ): Promise<string> {
@@ -458,21 +607,21 @@ class PuppetGitter extends Puppet {
     return 'mock_room_id'
   }
 
-  public async roomQuit (roomId: string): Promise<void> {
+  async roomQuit (roomId: string): Promise<void> {
     log.verbose('PuppetGitter', 'roomQuit(%s)', roomId)
   }
 
-  public async roomQRCode (roomId: string): Promise<string> {
+  async roomQRCode (roomId: string): Promise<string> {
     log.verbose('PuppetGitter', 'roomQRCode(%s)', roomId)
     return roomId + ' mock qrcode'
   }
 
-  public async roomMemberList (roomId: string) : Promise<string[]> {
+  async roomMemberList (roomId: string) : Promise<string[]> {
     log.verbose('PuppetGitter', 'roomMemberList(%s)', roomId)
     return []
   }
 
-  public async roomMemberRawPayload (roomId: string, contactId: string): Promise<RoomMemberPayload>  {
+  async roomMemberRawPayload (roomId: string, contactId: string): Promise<RoomMemberPayload>  {
     log.verbose('PuppetGitter', 'roomMemberRawPayload(%s, %s)', roomId, contactId)
     return {
       avatar    : 'mock-avatar-data',
@@ -482,15 +631,15 @@ class PuppetGitter extends Puppet {
     }
   }
 
-  public async roomMemberRawPayloadParser (rawPayload: RoomMemberPayload): Promise<RoomMemberPayload>  {
+  async roomMemberRawPayloadParser (rawPayload: RoomMemberPayload): Promise<RoomMemberPayload>  {
     log.verbose('PuppetGitter', 'roomMemberRawPayloadParser(%s)', rawPayload)
     return rawPayload
   }
 
-  public async roomAnnounce (roomId: string)                : Promise<string>
-  public async roomAnnounce (roomId: string, text: string)  : Promise<void>
+  async roomAnnounce (roomId: string)                : Promise<string>
+  async roomAnnounce (roomId: string, text: string)  : Promise<void>
 
-  public async roomAnnounce (roomId: string, text?: string) : Promise<void | string> {
+  async roomAnnounce (roomId: string, text?: string) : Promise<void | string> {
     if (text) {
       return
     }
@@ -502,15 +651,15 @@ class PuppetGitter extends Puppet {
    * Room Invitation
    *
    */
-  public async roomInvitationAccept (roomInvitationId: string): Promise<void> {
+  async roomInvitationAccept (roomInvitationId: string): Promise<void> {
     log.verbose('PuppetGitter', 'roomInvitationAccept(%s)', roomInvitationId)
   }
 
-  public async roomInvitationRawPayload (roomInvitationId: string): Promise<any> {
+  async roomInvitationRawPayload (roomInvitationId: string): Promise<any> {
     log.verbose('PuppetGitter', 'roomInvitationRawPayload(%s)', roomInvitationId)
   }
 
-  public async roomInvitationRawPayloadParser (rawPayload: any): Promise<RoomInvitationPayload> {
+  async roomInvitationRawPayloadParser (rawPayload: any): Promise<RoomInvitationPayload> {
     log.verbose('PuppetGitter', 'roomInvitationRawPayloadParser(%s)', JSON.stringify(rawPayload))
     return rawPayload
   }
@@ -520,36 +669,36 @@ class PuppetGitter extends Puppet {
    * Friendship
    *
    */
-  public async friendshipRawPayload (id: string): Promise<any> {
+  async friendshipRawPayload (id: string): Promise<any> {
     return { id } as any
   }
 
-  public async friendshipRawPayloadParser (rawPayload: any): Promise<FriendshipPayload> {
+  async friendshipRawPayloadParser (rawPayload: any): Promise<FriendshipPayload> {
     return rawPayload
   }
 
-  public async friendshipSearchPhone (
+  async friendshipSearchPhone (
     phone: string,
   ): Promise<null | string> {
     log.verbose('PuppetGitter', 'friendshipSearchPhone(%s)', phone)
     return null
   }
 
-  public async friendshipSearchWeixin (
+  async friendshipSearchWeixin (
     weixin: string,
   ): Promise<null | string> {
     log.verbose('PuppetGitter', 'friendshipSearchWeixin(%s)', weixin)
     return null
   }
 
-  public async friendshipAdd (
+  async friendshipAdd (
     contactId : string,
     hello     : string,
   ): Promise<void> {
     log.verbose('PuppetGitter', 'friendshipAdd(%s, %s)', contactId, hello)
   }
 
-  public async friendshipAccept (
+  async friendshipAccept (
     friendshipId : string,
   ): Promise<void> {
     log.verbose('PuppetGitter', 'friendshipAccept(%s)', friendshipId)
@@ -560,27 +709,27 @@ class PuppetGitter extends Puppet {
    * Tag
    *
    */
-  public async tagContactAdd (
+  async tagContactAdd (
     tagId: string,
     contactId: string,
   ): Promise<void> {
     log.verbose('PuppetGitter', 'tagContactAdd(%s)', tagId, contactId)
   }
 
-  public async tagContactRemove (
+  async tagContactRemove (
     tagId: string,
     contactId: string,
   ): Promise<void> {
     log.verbose('PuppetGitter', 'tagContactRemove(%s)', tagId, contactId)
   }
 
-  public async tagContactDelete (
+  async tagContactDelete (
     tagId: string,
   ): Promise<void> {
     log.verbose('PuppetGitter', 'tagContactDelete(%s)', tagId)
   }
 
-  public async tagContactList (
+  async tagContactList (
     contactId?: string,
   ): Promise<string[]> {
     log.verbose('PuppetGitter', 'tagContactList(%s)', contactId)

@@ -1,3 +1,4 @@
+/* eslint-disable semi */
 import { Gitter } from '../src/gitter'
 
 require('dotenv').config()
@@ -10,7 +11,7 @@ async function main () {
 
   const bot = await gitter.currentUser()
   void bot
-  // console.info('bot:', bot)
+  console.info('bot:', bot)
 
   // console.info('repos', await bot.repos())
   // console.info('orgs', await bot.orgs())
@@ -22,16 +23,21 @@ async function main () {
   // const room = gitter.rooms.join('gitterhq/sandbox')
 
   const roomList = (await bot.rooms())
-    .filter(room => /^wechaty\/wechaty$/i.test(room.uri ?? ''))
+  console.info('User.rooms().length', roomList)
 
-  if (roomList.length <= 0) {
-    throw new Error('room not found')
-  }
+  const l = await gitter.rooms.findAll()
+  console.info('gitter.rooms.findAll().length', l)
 
-  const room = roomList[0]
-  // console.info(room)
+  //   .filter(room => /^wechaty\/wechaty$/i.test(room.uri ?? ''))
 
-  const r = await gitter.rooms.findByUri(room.uri!)
+  // if (roomList.length <= 0) {
+  //   throw new Error('room not found')
+  // }
+
+  // const room = roomList[0]
+  // // console.info(room)
+
+  // const r = await gitter.rooms.findByUri(room.uri!)
   // const ret = await r.send('[Huan@Headquarters]:\nHelo~')
   // console.info(ret)
   /**
@@ -59,14 +65,14 @@ You will be very famous for creating this concept for our logo in the future, wh
   //   console.log(snapshot.length + ' messages in the snapshot');
   // });
 
-  r.subscribe()
-  // The 'chatMessages' event is emitted on each new message
-  r.on('chatMessages', function (message) {
-    console.info(message)
-    console.info(message.model.mentions)
-    console.info('A message was ' + message.operation)
-    console.info('Text: ', message.model.text)
-  })
+  // r.subscribe()
+  // // The 'chatMessages' event is emitted on each new message
+  // r.on('chatMessages', function (message) {
+  //   console.info(message)
+  //   console.info(message.model.mentions)
+  //   console.info('A message was ' + message.operation)
+  //   console.info('Text: ', message.model.text)
+  // })
 
   await new Promise(resolve => setTimeout(resolve, 1000 * 1000))
 }
