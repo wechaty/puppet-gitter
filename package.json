@@ -53,6 +53,7 @@
     "@types/faker": "^4.1.12",
     "@types/lru-cache": "^5.1.0",
     "@types/quick-lru": "^3.0.0",
+    "@types/uuid": "^8.3.0",
     "dotenv": "^8.2.0",
     "pkg-jq": "^0.2.4",
     "shx": "^0.3.2",
@@ -65,14 +66,17 @@
     "wechaty-puppet": "*"
   },
   "dependencies": {
+    "axios": "^0.20.0",
     "cuid": "^2.1.8",
     "faker": "^4.1.0",
     "flash-store": "^0.20.6",
+    "form-data": "^3.0.0",
     "lru-cache": "^6.0.0",
     "node-gitter": "^2.1.0",
     "quick-lru": "^5.1.0",
     "state-switch": "^0.6.18",
     "typed-emitter": "^1.2.0",
+    "uuid": "^8.3.0",
     "watchdog": "^0.8.17"
   },
   "publishConfig": {

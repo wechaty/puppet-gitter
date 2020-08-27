@@ -17,6 +17,10 @@
  *
  */
 import path  from 'path'
+import { v4 } from 'uuid'
+
+import Axios    from 'axios'
+import FormData from 'form-data'
 
 import {
   ContactPayload,
@@ -50,6 +54,7 @@ import {
 import {
   Gitter,
   GitterRoomMessagePayload,
+  Client,
 }                             from './gitter'
 
 import {
@@ -57,7 +62,9 @@ import {
   qrCodeForChatie,
   VERSION,
 }                                   from './config'
-import { RawCache } from './raw-cache'
+import { RawCache }                 from './raw-cache'
+import { getJsonFromJsonP }         from './node-jsonp'
+import { isGitterImageMessagePayload } from './pure-functions/is-gitter-image-message-payload'
 
 export type PuppetGitterOptions = PuppetOptions
 
@@ -69,6 +76,9 @@ class PuppetGitter extends Puppet {
 
   private get gitter () { return this._gitter! }
   private _gitter?: Gitter
+
+  private get privateClient () { return this._privateClient! }
+  private _privateClient?: Client
 
   private get rawCache () { return this._rawCache! }
   private _rawCache?: RawCache
@@ -107,6 +117,11 @@ class PuppetGitter extends Puppet {
       const gitter = new Gitter(this.token)
       this._gitter = gitter
 
+      const privateClient = new Client(this.token, {
+        version: 'private',
+      })
+      this._privateClient = privateClient
+
       const currentUser = await gitter.currentUser()
       await this.login(currentUser.id)
 
@@ -139,6 +154,7 @@ class PuppetGitter extends Puppet {
 
       const onChatMessage = async (payload: Gitter.MessagePayload) => {
         if (payload.operation !== 'create') { return }
+
         await this.rawCache.messagePayloads.set(payload.model.id, {
           ...payload.model,
           roomId: gitterRoom.id,
@@ -176,17 +192,24 @@ class PuppetGitter extends Puppet {
 
     try {
       while (this.cleanerCallbackList.length > 0) {
-        const clearnerCallback = this.cleanerCallbackList.pop()
-        if (clearnerCallback) {
-          await clearnerCallback()
+        const cleanerCallback = this.cleanerCallbackList.pop()
+        if (cleanerCallback) {
+          await cleanerCallback()
         }
       }
 
       /**
         * Huan(202008): clean faye timer and intervals
         */
-      this.gitter.faye.disconnect()
-      await this.gitter.faye.client.disconnect()
+      if (this._gitter) {
+        this._gitter.faye.disconnect()
+        await this._gitter.faye.client.disconnect()
+        this._gitter = undefined
+      }
+
+      if (this._privateClient) {
+        this._privateClient = undefined
+      }
 
       if (this.logonoff()) {
         await this.logout()
@@ -384,14 +407,17 @@ class PuppetGitter extends Puppet {
   }
 
   async messageFile (id: string): Promise<FileBox> {
-    // const attachment = this.mocker.MockMessage.loadAttachment(id)
-    // if (attachment instanceof FileBox) {
-    //   return attachment
-    // }
-    return FileBox.fromBase64(
-      'cRH9qeL3XyVnaXJkppBuH20tf5JlcG9uFX1lL2IvdHRRRS9kMMQxOPLKNYIzQQ==',
-      'mock-file' + id + '.txt',
-    )
+    const rawPayload = await this.rawCache.messagePayloads.get(id)
+    if (!rawPayload) {
+      throw new Error('message has no raw payload. id: ' + id)
+    }
+
+    const imageUrl = isGitterImageMessagePayload(rawPayload)
+    if (!imageUrl) {
+      throw new Error('message is not a file. id: ' + id)
+    }
+
+    return FileBox.fromUrl(imageUrl)
   }
 
   async messageUrl (messageId: string)  : Promise<UrlLinkPayload> {
@@ -420,14 +446,28 @@ class PuppetGitter extends Puppet {
   async messageRawPayloadParser (rawPayload: GitterRoomMessagePayload): Promise<MessagePayload> {
     log.silly('PuppetGitter', 'messageRawPayloadParser(%s)', JSON.stringify(rawPayload))
 
-    const payload: MessagePayload = {
+    const basePayload = {
       fromId        : rawPayload.fromUser.id,
       id            : rawPayload.id,
       mentionIdList : rawPayload.mentions.map(m => m.userId),
       roomId        : rawPayload.roomId!,
       text          : rawPayload.text,
       timestamp     : Date.now(),
-      type          : MessageType.Text,
+    }
+
+    let payload: MessagePayload
+
+    const imageUrl = isGitterImageMessagePayload(rawPayload)
+    if (imageUrl) {
+      payload = {
+        ...basePayload,
+        type: MessageType.Image,
+      }
+    } else {
+      payload = {
+        ...basePayload,
+        type: MessageType.Text,
+      }
     }
     return payload
   }
@@ -441,37 +481,68 @@ class PuppetGitter extends Puppet {
     throw new Error('messageRawPayload can not find payload for ' + id)
   }
 
-  private async messageSend (
-    conversationId: string,
-    something: string | FileBox, // | Attachment
-  ): Promise<void> {
-    log.verbose('PuppetGitter', 'messageSend(%s, %s)', conversationId, something)
-    if (!this.id) {
-      throw new Error('no this.id')
-    }
-
-    if (typeof something === 'string') {
-      const room = await this.gitter.rooms.find(conversationId)
-      if (!room) {
-        throw new Error('gitter room not found for conversationId ' + conversationId)
-      }
-      await room.send(something)
-    }
-
-  }
-
   async messageSendText (
     conversationId: string,
-    text     : string,
+    text          : string,
   ): Promise<void> {
-    return this.messageSend(conversationId, text)
+    log.silly('PuppetGitter', 'messageSendText(%s, %s)', conversationId, text)
+
+    const room = await this.gitter.rooms.find(conversationId)
+    if (!room) {
+      throw new Error('gitter room not found for conversationId ' + conversationId)
+    }
+    await room.send(text)
   }
 
+  /**
+   * https://github.com/Odonno/modern-gitter-winjs/issues/3#issuecomment-174939610
+   *  The process seems to be a little complicated.
+   *  GET request to https://gitter.im/api/private/generate-signature?room_uri=Odonno/modern-gitter-test&room_id=5688645016b6c7089cc0e846&type=image
+   *  GET request to something like https://api2.transloadit.com/instances/bored?callback=_jqjsp&_...=
+   *  finally POST the image to something like https://breagh.transloadit.com/assemblies/...?redirect=false
+   *  send GET requests every x seconds to know if the upload succeed
+   */
   async messageSendFile (
-    conversationId: string,
-    file     : FileBox,
+    conversationId : string,
+    fileBox        : FileBox,
   ): Promise<void> {
-    return this.messageSend(conversationId, file)
+    log.silly('PuppetGitter', 'messageSendFile(%s, %s)', conversationId, fileBox.name)
+
+    /**
+     * 1. Generate Signature
+     */
+    const generateSignature = `/generate-signature?room_id=${conversationId}&type=image`
+    const { sig, params } = await this.privateClient.get(generateSignature) as {
+      sig: string,
+      params: Object,
+    }
+
+    /**
+     * 2. Get Transloadit Instance
+     */
+    const cleanedUuid = v4().replace(/-/g, '')
+    const jsonpUrl = `https://api2.transloadit.com/instances/bored?callback=callback&${cleanedUuid}`
+    const json = await getJsonFromJsonP(jsonpUrl) as {
+      // eslint-disable-next-line camelcase
+      api2_host: string,
+      ok: string,
+      host: string,
+    }
+
+    /**
+     * Upload file
+     */
+    const uploadUrl = `https://${json.api2_host}/assemblies/${cleanedUuid}?redirect=false`
+
+    const form = new FormData()
+    form.append('signature', sig)
+    form.append('params', params)
+    form.append('file', await fileBox.toStream())
+
+    const { status, statusText } = await Axios.post(uploadUrl, form, { headers: form.getHeaders() })
+    if (status < 200 || status > 200) {
+      throw new Error(statusText)
+    }
   }
 
   async messageSendContact (

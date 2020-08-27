@@ -2,6 +2,11 @@ declare module 'node-gitter' {
   import { EventEmitter } from 'events'
   import TypedEventEmitter  from 'typed-emitter'
 
+  import {
+    Client,
+    ClientOptions,
+  }                       from 'node-gitter/lib/client'
+
   type ChatMessageEventListener = (message: MessagePayload) => void
   type EventsEventListener      = (event: EventPayload)     => void
   type UsersEventListener       = (user: UserPayload)       => void
@@ -16,6 +21,9 @@ declare module 'node-gitter' {
     RoomEvents
   >
 
+  interface GitterOptions {
+    client?: ClientOptions,
+  }
   class Gitter  {
 
     client : Client
@@ -23,7 +31,7 @@ declare module 'node-gitter' {
     users  : User
     rooms  : Room
 
-    constructor (token: string)
+    constructor (token: string, options?: GitterOptions)
     currentUser (): Promise<User>
 
   }
@@ -71,7 +79,6 @@ declare module 'node-gitter' {
 
   }
 
-  class Client {}
   class Faye {
 
     client: {
@@ -106,10 +113,10 @@ declare module 'node-gitter' {
     url: string,
 
     /**
-     * ORG: A room that represents a GitHub Organisation.
+     * ORG: A room that represents a GitHub Organization.
      * REPO: A room that represents a GitHub Repository.
      * ONETOONE: A one-to-one chat.
-     * ORG_CHANNEL: A Gitter channel nested under a GitHub Organisation.
+     * ORG_CHANNEL: A Gitter channel nested under a GitHub Organization.
      * REPO_CHANNEL A Gitter channel nested under a GitHub Repository.
      * USER_CHANNEL A Gitter channel nested under a GitHub User.
      */
@@ -167,5 +174,26 @@ declare module 'node-gitter' {
   interface OrgPayload {}
 
   export = Gitter
+
+}
+
+module 'node-gitter/lib/client' {
+
+  interface ClientOptions {
+    prefix?: boolean,
+    version?: string,
+    host?: string,
+    port?: number,
+  }
+
+  class Client {
+
+    constructor (token: string, opts?: ClientOptions)
+    get (path: string, opts?: Object): Promise<object>
+    post (path: string, opts?: Object): Promise<object>
+
+  }
+
+  export = Client
 
 }
