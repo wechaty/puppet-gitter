@@ -63,7 +63,11 @@ The `wechaty-puppet-gitter` will search the environment variable named `WECHATY_
 
 ### master
 
-### v0.2.1 (Aug 21, 2020)
+### v0.4 (Aug 27, 2020)
+
+1. Support send/receive image ([#2](https://github.com/wechaty/wechaty-puppet-gitter/issues/2))
+
+### v0.2 (Aug 21, 2020)
 
 Initial version.
 
