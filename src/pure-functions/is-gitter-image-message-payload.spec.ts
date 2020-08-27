@@ -33,3 +33,16 @@ test('isGitterImageMessagePayload: markdown image', async (t) => {
   t.true(ret, 'should identify image payload')
   t.equal(ret, URL, 'should get image url')
 })
+
+test('isGitterImageMessagePayload markdown image with link', async (t) => {
+  const URL  = 'https://wechaty.js.org/assets/2020/qijibot/qijibot.jpg'
+  const TEXT = `[![我如何用Chatbot在奇绩创坛重构销售体系](${URL})](https://wechaty.js.org/2020/08/08/qijibot/)`
+
+  const payload = {
+    text: TEXT,
+  } as GitterRoomMessagePayload
+
+  const ret = isGitterImageMessagePayload(payload)
+  t.true(ret, 'should identify image payload')
+  t.equal(ret, URL, 'should get image url')
+})

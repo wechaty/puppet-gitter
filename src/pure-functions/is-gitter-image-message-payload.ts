@@ -5,15 +5,24 @@ function isGitterImageMessagePayload (payload: GitterRoomMessagePayload): false 
   const RE_GITTER = /^\[!\[[^\]]+\]\(https:\/\/files\.gitter\.im\/[^)]+\)\]\(([^)]+)\)$/
   // text: '![gif.gif](https://domain.com/image.gif)'
   const RE_MD = /^!\[[^\]]*\]\(([^)]+)\)$/
+  // text: [![我如何用Chatbot在奇绩创坛重构销售体系](https://wechaty.js.org/assets/2020/qijibot/qijibot.jpg)](https://wechaty.js.org/2020/08/08/qijibot/)
+  const RE_MD_LINK = /^\[!\[[^\]]*\]\(([^)]+)\)\]\([^)]+\)$/
 
-  let matches = payload.text.match(RE_GITTER)
-  if (!matches) {
-    matches = payload.text.match(RE_MD)
+  const RE_LIST = [
+    RE_GITTER,
+    RE_MD,
+    RE_MD_LINK,
+  ]
+
+  let matches
+
+  for (const RE of RE_LIST) {
+    matches = payload.text.match(RE)
+    if (matches) {
+      return matches[1]
+    }
   }
 
-  if (matches) {
-    return matches[1]
-  }
   return false
 }
 
