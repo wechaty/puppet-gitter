@@ -22,9 +22,8 @@ test('isGitterImageMessagePayload Gitter.im image', async (t) => {
 })
 
 test('isGitterImageMessagePayload: markdown image', async (t) => {
-  const URL = 'https://developers.google.com/assistant/interactivecanvas/images/interactivecanvasgame.gif'
-
-  const TEXT = `![gif.gif](${URL})`
+  const URL  = 'https://developers.google.com/assistant/interactivecanvas/images/interactivecanvasgame.gif'
+  const TEXT = `![Interactive Canvas](${URL})`
 
   const payload = {
     text: TEXT,
