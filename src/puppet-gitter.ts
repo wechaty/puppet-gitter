@@ -537,7 +537,7 @@ class PuppetGitter extends Puppet {
     const form = new FormData()
     form.append('signature', sig)
     form.append('params', params)
-    form.append('file', await fileBox.toStream())
+    form.append('file', await fileBox.toStream(), { filename: fileBox.name })
 
     const { status, statusText } = await Axios.post(uploadUrl, form, { headers: form.getHeaders() })
     if (status < 200 || status > 200) {

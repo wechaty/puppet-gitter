@@ -4,9 +4,12 @@ import path from 'path'
 
 import { v4 } from 'uuid'
 import Axios from 'axios'
-import FormData from 'form-data'
+import FormData, { AppendOptions } from 'form-data'
 
-import { FileBox } from 'file-box'
+import {
+  FileBox,
+  // FileBoxType,
+}                 from 'file-box'
 
 import {
   Gitter,
@@ -91,7 +94,6 @@ You will be very famous for creating this concept for our logo in the future, wh
     // console.info('Text: ', message.model.text)
   })
 
-
   // https://api.gitter.im/private/generate-signature
   const generateSignature = `/generate-signature?room_id=${room.id}&type=image`
   console.info(generateSignature)
@@ -120,20 +122,49 @@ You will be very famous for creating this concept for our logo in the future, wh
   // const stream = fs.createReadStream(
   // )
 
-  // const filePath = path.join(__dirname, '../docs/images/wechaty-puppet-gitter.png')
+  const filePath = path.join(__dirname, '../docs/images/wechaty-puppet-gitter.png')
   // const filePath = path.join(__dirname, '../../wechaty/docs/images/qrcode_for_chatie.jpg')
-  const filePath = '/Users/huan/Downloads/mustache.gif'
+  // const filePath = '/Users/huan/Downloads/mustache.gif'
+
   const fileBox = FileBox.fromFile(filePath)
-  form.append('file', await fileBox.toStream())
+  const fileStream = FileBox.fromStream(await fileBox.toStream(), 'wechaty-puppet-gitter.png')
+
+  // const { buf, options } = await normalizeFileBox(fileStream)
+
+  // const ao: AppendOptions = {
+  //   knownLength: fileBox.toBuffer,
+  //   filename: path.basename(filePath),
+  //   filepath: filePath,
+  //   contentType: fileBox.mimeType,
+  // }
+
+  form.append('file', await fileStream.toStream(), { filename: fileStream.name })
 
   const ret = await Axios.post(uploadUrl, form, { headers: form.getHeaders() })
   if (ret.status < 200 || ret.status > 200) {
     throw new Error(ret.statusText)
   }
 
-  console.info('uploaded', ret)
+  console.info('uploaded', ret.statusText)
 
   await new Promise(resolve => setTimeout(resolve, 1000 * 1000))
+}
+
+export async function normalizeFileBox (fileBox: FileBox): Promise<{ buf: Buffer, options: AppendOptions}> {
+  // log.verbose('XX', 'normalizeFileBox({type: "%s", name: "%s"})',
+  //   FileBoxType[fileBox.type()],
+  //   fileBox.name,
+  // )
+
+  const buf = await fileBox.toBuffer()
+  // const length = buf.byteLength
+
+  const options: AppendOptions = {
+    // contentType : fileBox.mimeType,
+    filename    : fileBox.name.trim(),
+    // knownLength : length,
+  }
+  return { buf, options }
 }
 
 main()
