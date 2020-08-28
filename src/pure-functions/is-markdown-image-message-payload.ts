@@ -1,6 +1,6 @@
 import { GitterRoomMessagePayload } from '../gitter'
 
-function isGitterImageMessagePayload (payload: GitterRoomMessagePayload): false | string {
+function isMarkdownImageMessagePayload (payload: GitterRoomMessagePayload): false | string {
   // text: '[![image.png](https://files.gitter.im/5d007267d73408ce4fc3056f/7rkf/thumb/image.png)](https://files.gitter.im/5d007267d73408ce4fc3056f/7rkf/image.png)',
   const RE_GITTER = /^\[!\[[^\]]+\]\(https:\/\/files\.gitter\.im\/[^)]+\)\]\(([^)]+)\)$/
   // text: '![gif.gif](https://domain.com/image.gif)'
@@ -26,4 +26,4 @@ function isGitterImageMessagePayload (payload: GitterRoomMessagePayload): false 
   return false
 }
 
-export { isGitterImageMessagePayload }
+export { isMarkdownImageMessagePayload }

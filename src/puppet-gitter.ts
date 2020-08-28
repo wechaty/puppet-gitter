@@ -64,7 +64,7 @@ import {
 }                                   from './config'
 import { RawCache }                 from './raw-cache'
 import { getJsonFromJsonP }         from './node-jsonp'
-import { isGitterImageMessagePayload } from './pure-functions/is-gitter-image-message-payload'
+import { isMarkdownImageMessagePayload } from './pure-functions/is-markdown-image-message-payload'
 
 export type PuppetGitterOptions = PuppetOptions
 
@@ -412,7 +412,7 @@ class PuppetGitter extends Puppet {
       throw new Error('message has no raw payload. id: ' + id)
     }
 
-    const imageUrl = isGitterImageMessagePayload(rawPayload)
+    const imageUrl = isMarkdownImageMessagePayload(rawPayload)
     if (!imageUrl) {
       throw new Error('message is not a file. id: ' + id)
     }
@@ -457,7 +457,7 @@ class PuppetGitter extends Puppet {
 
     let payload: MessagePayload
 
-    const imageUrl = isGitterImageMessagePayload(rawPayload)
+    const imageUrl = isMarkdownImageMessagePayload(rawPayload)
     if (imageUrl) {
       payload = {
         ...basePayload,
