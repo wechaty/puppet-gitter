@@ -16,15 +16,18 @@
  *   limitations under the License.
  *
  */
-import {
+import type {
   EventLogoutPayload,
   EventLoginPayload,
   EventErrorPayload,
   EventMessagePayload,
+}                         from 'wechaty-puppet'
+
+import {
   MessageType,
 }                         from 'wechaty-puppet'
 
-import { PuppetGitter } from '../src/mod'
+import { PuppetGitter } from '../src/mod.js'
 
 /**
  *

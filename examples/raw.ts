@@ -14,9 +14,9 @@ import {
 import {
   Gitter,
   Client,
-}             from '../src/gitter'
+}             from '../src/gitter.js'
 
-import { getJsonFromJsonP } from '../src/node-jsonp'
+import { getJsonFromJsonP } from '../src/node-jsonp.js'
 
 require('dotenv').config()
 
@@ -24,7 +24,7 @@ void path
 
 async function main () {
 
-  const token = process.env.WECHATY_PUPPET_GITTER_TOKEN
+  const token = process.env['WECHATY_PUPPET_GITTER_TOKEN']
   if (!token) {
     throw new Error('token needed')
   }

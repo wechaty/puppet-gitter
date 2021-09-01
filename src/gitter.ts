@@ -1,7 +1,7 @@
 /// <reference path="./node-gitter.d.ts" />
 
 import Gitter from 'node-gitter'
-import Client from 'node-gitter/lib/client'
+import Client from 'node-gitter/lib/client.js'
 
 type MessageModelPayload = Gitter.MessagePayload['model']
 

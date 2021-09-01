@@ -7,10 +7,10 @@ import { log } from 'wechaty-puppet'
 import { FlashStore } from 'flash-store'
 import LRU from 'lru-cache'
 
-import {
+import type {
   Gitter,
   GitterRoomMessagePayload,
-}                         from './gitter'
+}                           from './gitter.js'
 
 class RawCache {
 
@@ -18,9 +18,9 @@ class RawCache {
   get messagePayloads ()  { return this._messagePayloads! }
   get roomPayloads ()     { return this._roomPayloads! }
 
-  private _contactPayloads? : FlashStore<Gitter.UserPayload>
+  private _contactPayloads? : FlashStore<string, Gitter.UserPayload>
   private _messagePayloads? : LRU<string, GitterRoomMessagePayload>
-  private _roomPayloads?    : FlashStore<Gitter.RoomPayload>
+  private _roomPayloads?    : FlashStore<string, Gitter.RoomPayload>
 
   constructor (
     public puppetId: string,

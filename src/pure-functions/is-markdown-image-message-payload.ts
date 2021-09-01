@@ -1,4 +1,4 @@
-import { GitterRoomMessagePayload } from '../gitter'
+import type { GitterRoomMessagePayload } from '../gitter.js'
 
 function isMarkdownImageMessagePayload (payload: GitterRoomMessagePayload): false | string {
   // text: '[![image.png](https://files.gitter.im/5d007267d73408ce4fc3056f/7rkf/thumb/image.png)](https://files.gitter.im/5d007267d73408ce4fc3056f/7rkf/image.png)',
@@ -19,7 +19,7 @@ function isMarkdownImageMessagePayload (payload: GitterRoomMessagePayload): fals
   for (const RE of RE_LIST) {
     matches = payload.text.match(RE)
     if (matches) {
-      return matches[1]
+      return matches[1]!
     }
   }
 

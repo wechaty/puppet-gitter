@@ -1,3 +1,4 @@
+/* eslint no-use-before-define: 0 */
 declare module 'node-gitter' {
   import { EventEmitter } from 'events'
   import TypedEventEmitter  from 'typed-emitter'
@@ -5,10 +6,10 @@ declare module 'node-gitter' {
   import {
     Client,
     ClientOptions,
-  }                       from 'node-gitter/lib/client'
+  }                       from 'node-gitter/lib/client.js'
 
   type ChatMessageEventListener = (message: MessagePayload) => void
-  type EventsEventListener      = (event: EventPayload)     => void
+  type EventsEventListener      = (event: any /* EventPayload */)     => void
   type UsersEventListener       = (user: UserPayload)       => void
 
   interface RoomEvents {
@@ -177,7 +178,7 @@ declare module 'node-gitter' {
 
 }
 
-module 'node-gitter/lib/client' {
+module 'node-gitter/lib/client.js' {
 
   interface ClientOptions {
     prefix?: boolean,

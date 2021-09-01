@@ -2,7 +2,9 @@ import {
   FileBox,
 }             from 'wechaty-puppet'
 
-import { VERSION } from './version'
+import { packageJson } from './package-json.js'
+
+const VERSION = packageJson.version || '0.0.0'
 
 const CHATIE_OFFICIAL_ACCOUNT_QRCODE = 'http://weixin.qq.com/r/qymXj7DEO_1ErfTs93y5'
 
