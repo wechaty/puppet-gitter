@@ -61,7 +61,9 @@ The `wechaty-puppet-gitter` will search the environment variable named `WECHATY_
 
 ## HISTORY
 
-### master
+### master v0.5
+
+1. ES Modules support
 
 ### v0.4 (Aug 27, 2020)
 
@@ -77,6 +79,7 @@ Initial version.
 
 [Huan LI](http://linkedin.com/in/zixia) \<zixia@zixia.net\>
 
+<!-- markdownlint-disable MD033 -->
 <a href="https://stackexchange.com/users/265499">
   <img src="https://stackexchange.com/users/flair/265499.png" width="208" height="58" alt="profile for zixia on Stack Exchange, a network of free, community-driven Q&amp;A sites" title="profile for zixia on Stack Exchange, a network of free, community-driven Q&amp;A sites">
 </a>

@@ -1,13 +1,13 @@
-#!/usr/bin/env ts-node
-import test  from 'blue-tape'
+#!/usr/bin/env node --no-warnings --loader ts-node/esm
+import { test } from 'tstest'
 
-import { PuppetGitter } from './puppet-gitter'
+import { PuppetGitter } from './puppet-gitter.js'
 
 // const wtf = require('wtfnode')
 
 class PuppetGitterTest extends PuppetGitter {}
 
-test('PuppetGitter perfect restart testing', async (t) => {
+test('PuppetGitter perfect restart testing', async t => {
   const puppet = new PuppetGitterTest()
   try {
 
@@ -26,7 +26,7 @@ test('PuppetGitter perfect restart testing', async (t) => {
     t.pass('PuppetGitter() perfect restart pass.')
 
   } catch (e) {
-    t.fail(e)
+    t.fail(e as any)
   }
 
   // await new Promise(resolve => setTimeout(resolve, 1000))

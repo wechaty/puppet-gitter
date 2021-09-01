@@ -55,22 +55,22 @@ import {
   Gitter,
   GitterRoomMessagePayload,
   Client,
-}                             from './gitter'
+}                             from './gitter.js'
 
 import {
   CHATIE_OFFICIAL_ACCOUNT_QRCODE,
   qrCodeForChatie,
   VERSION,
-}                                   from './config'
-import { RawCache }                 from './raw-cache'
-import { getJsonFromJsonP }         from './node-jsonp'
-import { isMarkdownImageMessagePayload } from './pure-functions/is-markdown-image-message-payload'
+}                                   from './config.js'
+import { RawCache }                 from './raw-cache.js'
+import { getJsonFromJsonP }         from './node-jsonp.js'
+import { isMarkdownImageMessagePayload } from './pure-functions/is-markdown-image-message-payload.js'
 
 export type PuppetGitterOptions = PuppetOptions
 
 class PuppetGitter extends Puppet {
 
-  static readonly VERSION = VERSION
+  static override readonly VERSION = VERSION
 
   private token : string
 
@@ -93,8 +93,8 @@ class PuppetGitter extends Puppet {
 
     if (options.token) {
       this.token = options.token
-    } else if (process.env.WECHATY_PUPPET_GITTER_TOKEN) {
-      this.token = process.env.WECHATY_PUPPET_GITTER_TOKEN
+    } else if (process.env['WECHATY_PUPPET_GITTER_TOKEN']) {
+      this.token = process.env['WECHATY_PUPPET_GITTER_TOKEN']
     } else {
       throw new Error('wechaty-puppet-gitter need a gitter token')
     }
@@ -102,7 +102,7 @@ class PuppetGitter extends Puppet {
     this.cleanerCallbackList = []
   }
 
-  async start (): Promise<void> {
+  override async start (): Promise<void> {
     log.verbose('PuppetGitter', 'start()')
 
     if (this.state.on()) {
@@ -179,7 +179,7 @@ class PuppetGitter extends Puppet {
 
   }
 
-  async stop (): Promise<void> {
+  override async stop (): Promise<void> {
     log.verbose('PuppetGitter', 'stop()')
 
     if (this.state.off()) {
@@ -221,7 +221,7 @@ class PuppetGitter extends Puppet {
 
   }
 
-  async login (userId: string): Promise<void> {
+  override async login (userId: string): Promise<void> {
     log.verbose('PuppetGitter', 'login(%s)', userId)
 
     const rawCache = new RawCache(
@@ -234,7 +234,7 @@ class PuppetGitter extends Puppet {
     return super.login(userId)
   }
 
-  async logout (): Promise<void> {
+  override async logout (): Promise<void> {
     log.verbose('PuppetGitter', 'logout()')
 
     await super.logout()
@@ -250,7 +250,7 @@ class PuppetGitter extends Puppet {
     setTimeout(() => this.emit('dong', { data: data || '' }), 1000)
   }
 
-  unref (): void {
+  override unref (): void {
     log.verbose('PuppetGitter', 'unref()')
     super.unref()
   }
@@ -574,7 +574,7 @@ class PuppetGitter extends Puppet {
     // return this.messageSend(conversationId, miniProgram)
   }
 
-  async messageForward (
+  override async messageForward (
     conversationId: string,
     messageId : string,
   ): Promise<void> {
@@ -621,14 +621,16 @@ class PuppetGitter extends Puppet {
       unreadItems : gitterRoom.unreadItems,
       uri         : gitterRoom.uri,
       url         : gitterRoom.url,
-      user: gitterRoom.user ? {
-        avatarUrlMedium : gitterRoom.user.avatarUrlMedium,
-        avatarUrlSmall  : gitterRoom.user.avatarUrlSmall,
-        displayName     : gitterRoom.user.displayName,
-        id              : gitterRoom.user.id,
-        url             : gitterRoom.user.url,
-        username        : gitterRoom.user.username,
-      } : undefined,
+      user: gitterRoom.user
+        ? {
+            avatarUrlMedium : gitterRoom.user.avatarUrlMedium,
+            avatarUrlSmall  : gitterRoom.user.avatarUrlSmall,
+            displayName     : gitterRoom.user.displayName,
+            id              : gitterRoom.user.id,
+            url             : gitterRoom.user.url,
+            username        : gitterRoom.user.username,
+          }
+        : undefined,
     }
 
     await this.rawCache.roomPayloads.set(id, newPayload)
@@ -819,6 +821,13 @@ class PuppetGitter extends Puppet {
   ): Promise<string[]> {
     log.verbose('PuppetGitter', 'tagContactList(%s)', contactId)
     return []
+  }
+
+  override conversationReadMark (
+    conversationId: string,
+    hasRead = true,
+  ) : Promise<void> {
+    return throwUnsupportedError(conversationId, hasRead)
   }
 
 }

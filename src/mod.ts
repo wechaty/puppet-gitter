@@ -1,5 +1,5 @@
-import { VERSION }    from './version'
-import { PuppetGitter } from './puppet-gitter'
+import { VERSION }    from './config.js'
+import { PuppetGitter } from './puppet-gitter.js'
 
 export {
   VERSION,
