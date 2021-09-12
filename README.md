@@ -3,6 +3,7 @@
 [![NPM Version](https://badge.fury.io/js/wechaty-puppet-gitter.svg)](https://badge.fury.io/js/wechaty-puppet-gitter)
 [![npm (tag)](https://img.shields.io/npm/v/wechaty-puppet-gitter/next.svg)](https://www.npmjs.com/package/wechaty-puppet-gitter?activeTab=versions)
 [![NPM](https://github.com/wechaty/wechaty-puppet-gitter/workflows/NPM/badge.svg)](https://github.com/wechaty/wechaty-puppet-gitter/actions?query=workflow%3ANPM)
+[![ES Modules](https://img.shields.io/badge/ES-Modules-brightgreen)](https://github.com/Chatie/tsconfig/issues/16)
 
 ![wechaty puppet gitter](docs/images/wechaty-puppet-gitter.png)
 
