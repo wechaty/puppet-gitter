@@ -62,9 +62,13 @@ The `wechaty-puppet-gitter` will search the environment variable named `WECHATY_
 
 ## HISTORY
 
-### master v0.5
+### master
 
-1. ES Modules support
+### v0.7 (Oct 2021)
+
+Upgrade to Puppet v0.51 API
+
+1. v0.5 (Sep 2021): ES Modules support
 
 ### v0.4 (Aug 27, 2020)
 
