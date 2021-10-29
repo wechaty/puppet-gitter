@@ -14,7 +14,7 @@ import type {
 
 class RawCache {
 
-  get contactPayloads ()     { return this._contactPayloads! }
+  get contactPayloads ()  { return this._contactPayloads! }
   get messagePayloads ()  { return this._messagePayloads! }
   get roomPayloads ()     { return this._roomPayloads! }
 
@@ -32,7 +32,7 @@ class RawCache {
   async start () {
     log.verbose('RawCache', 'start()')
 
-    if (this.messagePayloads) {
+    if (this._messagePayloads) {
       throw new Error('RawCache should be stop() before start() again.')
     }
 
@@ -73,8 +73,8 @@ class RawCache {
   async stop () {
     log.verbose('RawCache', 'stop()')
 
-    if (this.contactPayloads) { await this.contactPayloads.close()  }
-    if (this.roomPayloads)    { await this.roomPayloads.close()     }
+    if (this._contactPayloads) { await this._contactPayloads.close()  }
+    if (this._roomPayloads)    { await this._roomPayloads.close()     }
 
     this._contactPayloads = undefined
     this._messagePayloads = undefined

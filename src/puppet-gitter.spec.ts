@@ -1,4 +1,6 @@
 #!/usr/bin/env -S node --no-warnings --loader ts-node/esm
+import 'dotenv/config'
+
 import { test } from 'tstest'
 
 import { PuppetGitter } from './puppet-gitter.js'
@@ -13,12 +15,12 @@ test('PuppetGitter perfect restart testing', async t => {
 
     for (let i = 0; i < 3; i++) {
       await puppet.start()
-      t.true(puppet.state.on(), 'should be turned on after start()')
+      t.ok(puppet.state.active(), 'should be turned on after start()')
 
       await new Promise(resolve => setTimeout(resolve, 5000))
 
       await puppet.stop()
-      t.true(puppet.state.off(), 'should be turned off after stop()')
+      t.ok(puppet.state.inactive(), 'should be turned off after stop()')
 
       t.pass('start/stop-ed at #' + i)
     }

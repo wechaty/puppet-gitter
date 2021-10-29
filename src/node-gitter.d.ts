@@ -48,7 +48,7 @@ declare module 'node-gitter' {
 
     current (): Promise<User>
 
-    find (id: string): Promise<UserPayload>
+    find (id: string): Promise<undefined | UserPayload>
     findById (id: string): Promise<User>
     findByUsername (username: string): Promise<User>
 
@@ -66,7 +66,7 @@ declare module 'node-gitter' {
     constructor (attrs: Object, public client: Client, public faye: Faye, usersResource: User)
 
     findAll (): Promise<RoomPayload[]>
-    find (id: string): Promise<Room>
+    find (id: string): Promise<undefined | Room>
     findByUri (roomUri: string): Promise<Room>
     join (roomUri: string): Promise<Room>
     send (message: string): Promise<Object>

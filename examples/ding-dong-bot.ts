@@ -16,16 +16,7 @@
  *   limitations under the License.
  *
  */
-import type {
-  EventLogoutPayload,
-  EventLoginPayload,
-  EventErrorPayload,
-  EventMessagePayload,
-}                         from 'wechaty-puppet'
-
-import {
-  MessageType,
-}                         from 'wechaty-puppet'
+import * as PUPPET from 'wechaty-puppet'
 
 import { PuppetGitter } from '../src/mod.js'
 
@@ -71,16 +62,16 @@ puppet.start()
  *  `scan`, `login`, `logout`, `error`, and `message`
  *
  */
-function onLogin (payload: EventLoginPayload) {
+function onLogin (payload: PUPPET.payload.EventLogin) {
   console.info(`${payload.contactId} login`)
   // puppet.messageSendText(payload.contactId, 'Wechaty login').catch(console.error)
 }
 
-function onLogout (payload: EventLogoutPayload) {
+function onLogout (payload: PUPPET.payload.EventLogout) {
   console.info(`${payload.contactId} logouted`)
 }
 
-function onError (payload: EventErrorPayload) {
+function onError (payload: PUPPET.payload.EventError) {
   console.error('Bot error:', payload.data)
   /*
   if (bot.logonoff()) {
@@ -95,7 +86,7 @@ function onError (payload: EventErrorPayload) {
  *    dealing with Messages.
  *
  */
-async function onMessage (payload: EventMessagePayload) {
+async function onMessage (payload: PUPPET.payload.EventMessage) {
   const msgPayload = await puppet.messagePayload(payload.messageId)
   console.info(msgPayload)
 
@@ -103,7 +94,7 @@ async function onMessage (payload: EventMessagePayload) {
   const talkerPayload = await puppet.contactPayload(talkerId)
   console.info(talkerPayload)
 
-  if (msgPayload.type === MessageType.Text
+  if (msgPayload.type === PUPPET.type.Message.Text
     && msgPayload.text
     && /ding/i.test(msgPayload.text)
     && msgPayload.roomId

@@ -22,34 +22,11 @@ import * as uuid from 'uuid'
 import Axios    from 'axios'
 import FormData from 'form-data'
 
-import {
-  ContactPayload,
+import * as PUPPET from 'wechaty-puppet'
+import { log } from 'wechaty-puppet'
 
-  FileBox,
-
-  FriendshipPayload,
-
-  ImageType,
-
-  MessagePayload,
-
-  Puppet,
-  PuppetOptions,
-
-  RoomInvitationPayload,
-  RoomMemberPayload,
-  RoomPayload,
-
-  UrlLinkPayload,
-  MiniProgramPayload,
-
-  log,
-  ContactGender,
-  ContactType,
-  MessageType,
-  PayloadType,
-  throwUnsupportedError,
-}                           from 'wechaty-puppet'
+import { FileBox } from 'file-box'
+import type { FileBoxInterface } from 'file-box'
 
 import {
   Gitter,
@@ -66,9 +43,9 @@ import { RawCache }                 from './raw-cache.js'
 import { getJsonFromJsonP }         from './node-jsonp.js'
 import { isMarkdownImageMessagePayload } from './pure-functions/is-markdown-image-message-payload.js'
 
-export type PuppetGitterOptions = PuppetOptions
+export type PuppetGitterOptions = PUPPET.PuppetOptions
 
-class PuppetGitter extends Puppet {
+class PuppetGitter extends PUPPET.Puppet {
 
   static override readonly VERSION = VERSION
 
@@ -125,13 +102,16 @@ class PuppetGitter extends Puppet {
     const gitterRoomPayloadList = await gitter.rooms.findAll()
     const gitterRoomList = await Promise.all(
       gitterRoomPayloadList
-        .map(payload => gitter.rooms.find(payload.id))
+        .map(payload => gitter.rooms.find(payload.id)),
     )
 
     /**
      * Subscribe to all room message events
      */
     for (const gitterRoom of gitterRoomList) {
+      if (!gitterRoom) {
+        continue
+      }
       gitterRoom.subscribe()
       this.cleanerCallbackList.push(() => gitterRoom.unsubscribe())
 
@@ -154,10 +134,12 @@ class PuppetGitter extends Puppet {
             await this.rawCache.contactPayloads.set(userPayload.id, userPayload)
           }
         }
-
       }
-      gitterRoom.on('chatMessages', onChatMessage)
-      this.cleanerCallbackList.push(() => gitterRoom.off('chatMessages', onChatMessage))
+
+      const wrappedOnChatMessage = this.wrapAsync(onChatMessage)
+
+      gitterRoom.on('chatMessages', wrappedOnChatMessage)
+      this.cleanerCallbackList.push(() => gitterRoom.off('chatMessages', wrappedOnChatMessage))
     }
 
   }
@@ -260,10 +242,10 @@ class PuppetGitter extends Puppet {
     return list
   }
 
-  override async contactAvatar (contactId: string)                : Promise<FileBox>
-  override async contactAvatar (contactId: string, file: FileBox) : Promise<void>
+  override async contactAvatar (contactId: string)                : Promise<FileBoxInterface>
+  override async contactAvatar (contactId: string, file: FileBoxInterface) : Promise<void>
 
-  override async contactAvatar (contactId: string, file?: FileBox): Promise<void | FileBox> {
+  override async contactAvatar (contactId: string, file?: FileBoxInterface): Promise<void | FileBoxInterface> {
     log.verbose('PuppetGitter', 'contactAvatar(%s)', contactId)
 
     /**
@@ -281,27 +263,27 @@ class PuppetGitter extends Puppet {
   }
 
   override async contactPhone (contactId: string, phoneList: string[]): Promise<void> {
-    throwUnsupportedError(contactId, phoneList)
+    return PUPPET.throwUnsupportedError(contactId, phoneList)
   }
 
   override async contactCorporationRemark (contactId: string, corporationRemark: string | null) : Promise<void> {
-    throwUnsupportedError(contactId, corporationRemark)
+    return PUPPET.throwUnsupportedError(contactId, corporationRemark)
   }
 
   override async contactDescription (contactId: string, description: string | null): Promise<void> {
-    throwUnsupportedError(contactId, description)
+    return PUPPET.throwUnsupportedError(contactId, description)
   }
 
-  override async contactRawPayloadParser (rawPayload: Gitter.UserPayload): Promise<ContactPayload> {
+  override async contactRawPayloadParser (rawPayload: Gitter.UserPayload): Promise<PUPPET.payload.Contact> {
     log.silly('PuppetGitter', 'contactRawPayload(%s)', rawPayload)
 
-    const payload: ContactPayload = {
+    const payload: PUPPET.payload.Contact = {
       avatar : rawPayload.avatarUrlMedium,
-      gender : ContactGender.Unknown,
+      gender : PUPPET.type.ContactGender.Unknown,
       id     : rawPayload.id,
       name   : rawPayload.displayName,
       phone  : [],
-      type   : ContactType.Individual,
+      type   : PUPPET.type.Contact.Individual,
       weixin : rawPayload.username,
     }
 
@@ -339,15 +321,15 @@ class PuppetGitter extends Puppet {
 
   override async messageImage (
     messageId: string,
-    imageType: ImageType,
-  ) : Promise<FileBox> {
+    imageType: PUPPET.type.Image,
+  ) : Promise<FileBoxInterface> {
     log.verbose('PuppetGitter', 'messageImage(%s, %s[%s])',
       messageId,
       imageType,
-      ImageType[imageType],
+      PUPPET.type.Image[imageType],
     )
     // const attachment = this.mocker.MockMessage.loadAttachment(messageId)
-    // if (attachment instanceof FileBox) {
+    // if (attachment instanceof FileBoxInterface) {
     //   return attachment
     // }
     return FileBox.fromQRCode('fake-qrcode')
@@ -360,7 +342,7 @@ class PuppetGitter extends Puppet {
     return false
   }
 
-  override async messageFile (id: string): Promise<FileBox> {
+  override async messageFile (id: string): Promise<FileBoxInterface> {
     const rawPayload = await this.rawCache.messagePayloads.get(id)
     if (!rawPayload) {
       throw new Error('message has no raw payload. id: ' + id)
@@ -374,7 +356,7 @@ class PuppetGitter extends Puppet {
     return FileBox.fromUrl(imageUrl)
   }
 
-  override async messageUrl (messageId: string)  : Promise<UrlLinkPayload> {
+  override async messageUrl (messageId: string)  : Promise<PUPPET.payload.UrlLink> {
     log.verbose('PuppetGitter', 'messageUrl(%s)', messageId)
     // const attachment = this.mocker.MockMessage.loadAttachment(messageId)
     // if (attachment instanceof UrlLink) {
@@ -386,7 +368,7 @@ class PuppetGitter extends Puppet {
     }
   }
 
-  override async messageMiniProgram (messageId: string): Promise<MiniProgramPayload> {
+  override async messageMiniProgram (messageId: string): Promise<PUPPET.payload.MiniProgram> {
     log.verbose('PuppetGitter', 'messageMiniProgram(%s)', messageId)
     // const attachment = this.mocker.MockMessage.loadAttachment(messageId)
     // if (attachment instanceof MiniProgram) {
@@ -397,7 +379,7 @@ class PuppetGitter extends Puppet {
     }
   }
 
-  override async messageRawPayloadParser (rawPayload: GitterRoomMessagePayload): Promise<MessagePayload> {
+  override async messageRawPayloadParser (rawPayload: GitterRoomMessagePayload): Promise<PUPPET.payload.Message> {
     log.silly('PuppetGitter', 'messageRawPayloadParser(%s)', JSON.stringify(rawPayload))
 
     const basePayload = {
@@ -409,18 +391,18 @@ class PuppetGitter extends Puppet {
       timestamp     : Date.now(),
     }
 
-    let payload: MessagePayload
+    let payload: PUPPET.payload.Message
 
     const imageUrl = isMarkdownImageMessagePayload(rawPayload)
     if (imageUrl) {
       payload = {
         ...basePayload,
-        type: MessageType.Image,
+        type: PUPPET.type.Message.Image,
       }
     } else {
       payload = {
         ...basePayload,
-        type: MessageType.Text,
+        type: PUPPET.type.Message.Text,
       }
     }
     return payload
@@ -458,9 +440,9 @@ class PuppetGitter extends Puppet {
    */
   override async messageSendFile (
     conversationId : string,
-    fileBox        : FileBox,
+    fileBoxInterface        : FileBoxInterface,
   ): Promise<void> {
-    log.silly('PuppetGitter', 'messageSendFile(%s, %s)', conversationId, fileBox.name)
+    log.silly('PuppetGitter', 'messageSendFile(%s, %s)', conversationId, fileBoxInterface.name)
 
     /**
      * 1. Generate Signature
@@ -491,7 +473,7 @@ class PuppetGitter extends Puppet {
     const form = new FormData()
     form.append('signature', sig)
     form.append('params', params)
-    form.append('file', await fileBox.toBuffer(), { filename: fileBox.name })
+    form.append('file', await fileBoxInterface.toBuffer(), { filename: fileBoxInterface.name })
 
     const { status, statusText } = await Axios.post(uploadUrl, form, { headers: form.getHeaders() })
     if (status < 200 || status > 200) {
@@ -511,7 +493,7 @@ class PuppetGitter extends Puppet {
 
   override async messageSendUrl (
     conversationId: string,
-    urlLinkPayload: UrlLinkPayload,
+    urlLinkPayload: PUPPET.payload.UrlLink,
   ) : Promise<void> {
     log.verbose('PuppetGitter', 'messageSendUrl(%s, %s)', conversationId, JSON.stringify(urlLinkPayload))
 
@@ -521,7 +503,7 @@ class PuppetGitter extends Puppet {
 
   override async messageSendMiniProgram (
     conversationId: string,
-    miniProgramPayload: MiniProgramPayload,
+    miniProgramPayload: PUPPET.payload.MiniProgram,
   ): Promise<void> {
     log.verbose('PuppetGitter', 'messageSendMiniProgram(%s, %s)', conversationId, JSON.stringify(miniProgramPayload))
     // const miniProgram = new MiniProgram(miniProgramPayload)
@@ -543,8 +525,8 @@ class PuppetGitter extends Puppet {
    * Room
    *
    */
-  override async roomRawPayloadParser (rawPayload: Gitter.RoomPayload): Promise<RoomPayload> {
-    const payload: RoomPayload = {
+  override async roomRawPayloadParser (rawPayload: Gitter.RoomPayload): Promise<PUPPET.payload.Room> {
+    const payload: PUPPET.payload.Room = {
       adminIdList  : [],
       avatar       : undefined,
       id           : rawPayload.id,
@@ -604,7 +586,7 @@ class PuppetGitter extends Puppet {
     log.verbose('PuppetGitter', 'roomDel(%s, %s)', roomId, contactId)
   }
 
-  override async roomAvatar (roomId: string): Promise<FileBox> {
+  override async roomAvatar (roomId: string): Promise<FileBoxInterface> {
     log.verbose('PuppetGitter', 'roomAvatar(%s)', roomId)
 
     const payload = await this.roomPayload(roomId)
@@ -636,7 +618,7 @@ class PuppetGitter extends Puppet {
       return 'mock room topic'
     }
 
-    await this.dirtyPayload(PayloadType.Room, roomId)
+    await this.dirtyPayload(PUPPET.type.Payload.Room, roomId)
   }
 
   override async roomCreate (
@@ -662,7 +644,7 @@ class PuppetGitter extends Puppet {
     return []
   }
 
-  override async roomMemberRawPayload (roomId: string, contactId: string): Promise<RoomMemberPayload>  {
+  override async roomMemberRawPayload (roomId: string, contactId: string): Promise<PUPPET.payload.RoomMember>  {
     log.verbose('PuppetGitter', 'roomMemberRawPayload(%s, %s)', roomId, contactId)
     return {
       avatar    : 'mock-avatar-data',
@@ -672,7 +654,7 @@ class PuppetGitter extends Puppet {
     }
   }
 
-  override async roomMemberRawPayloadParser (rawPayload: RoomMemberPayload): Promise<RoomMemberPayload>  {
+  override async roomMemberRawPayloadParser (rawPayload: PUPPET.payload.RoomMember): Promise<PUPPET.payload.RoomMember>  {
     log.verbose('PuppetGitter', 'roomMemberRawPayloadParser(%s)', rawPayload)
     return rawPayload
   }
@@ -700,7 +682,7 @@ class PuppetGitter extends Puppet {
     log.verbose('PuppetGitter', 'roomInvitationRawPayload(%s)', roomInvitationId)
   }
 
-  override async roomInvitationRawPayloadParser (rawPayload: any): Promise<RoomInvitationPayload> {
+  override async roomInvitationRawPayloadParser (rawPayload: any): Promise<PUPPET.payload.RoomInvitation> {
     log.verbose('PuppetGitter', 'roomInvitationRawPayloadParser(%s)', JSON.stringify(rawPayload))
     return rawPayload
   }
@@ -714,7 +696,7 @@ class PuppetGitter extends Puppet {
     return { id } as any
   }
 
-  override async friendshipRawPayloadParser (rawPayload: any): Promise<FriendshipPayload> {
+  override async friendshipRawPayloadParser (rawPayload: any): Promise<PUPPET.payload.Friendship> {
     return rawPayload
   }
 
@@ -781,7 +763,7 @@ class PuppetGitter extends Puppet {
     conversationId: string,
     hasRead = true,
   ) : Promise<void> {
-    return throwUnsupportedError(conversationId, hasRead)
+    return PUPPET.throwUnsupportedError(conversationId, hasRead)
   }
 
 }
