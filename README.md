@@ -66,7 +66,6 @@ The `wechaty-puppet-gitter` will search the environment variable named `WECHATY_
 
 Release v1.0
 
-
 1. v0.7 (Oct 2021): Upgrade to Puppet v0.51 API
 1. v0.5 (Sep 2021): ES Modules support
 
