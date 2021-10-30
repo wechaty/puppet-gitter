@@ -1,6 +1,6 @@
 {
   "name": "wechaty-puppet-gitter",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Puppet Gitter for Wechaty",
   "type": "module",
   "exports": {
