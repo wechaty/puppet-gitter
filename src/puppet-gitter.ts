@@ -115,7 +115,7 @@ class PuppetGitter extends PUPPET.Puppet {
       gitterRoom.subscribe()
       this.cleanerCallbackList.push(() => gitterRoom.unsubscribe())
 
-      const onChatMessage = async (payload: Gitter.MessagePayload) => {
+      const onChatMessageAsync = async (payload: Gitter.MessagePayload) => {
         if (payload.operation !== 'create') { return }
 
         await this.rawCache.messagePayloads.set(payload.model.id, {
@@ -129,30 +129,23 @@ class PuppetGitter extends PUPPET.Puppet {
           *   so we store it when we received a message from the message payload
           */
         if ('fromUser' in payload.model) {
-          const userPayload = payload.model.fromUser as Gitter.UserPayload
+          const userPayload = payload.model.fromUser
           if (!await this.rawCache.contactPayloads.has(userPayload.id)) {
             await this.rawCache.contactPayloads.set(userPayload.id, userPayload)
           }
         }
       }
 
-      const wrappedOnChatMessage = this.wrapAsync(onChatMessage)
+      const onChatMessage = this.wrapAsync(onChatMessageAsync)
 
-      gitterRoom.on('chatMessages', wrappedOnChatMessage)
-      this.cleanerCallbackList.push(() => gitterRoom.off('chatMessages', wrappedOnChatMessage))
+      gitterRoom.on('chatMessages', onChatMessage)
+      this.cleanerCallbackList.push(() => gitterRoom.off('chatMessages', onChatMessage))
     }
 
   }
 
   override async onStop (): Promise<void> {
     log.verbose('PuppetGitter', 'onStop()')
-
-    while (this.cleanerCallbackList.length > 0) {
-      const cleanerCallback = this.cleanerCallbackList.pop()
-      if (cleanerCallback) {
-        await cleanerCallback()
-      }
-    }
 
     /**
       * Huan(202008): clean faye timer and intervals
@@ -166,6 +159,9 @@ class PuppetGitter extends PUPPET.Puppet {
     if (this._privateClient) {
       this._privateClient = undefined
     }
+
+    this.cleanerCallbackList.map(setImmediate)
+    this.cleanerCallbackList.length = 0
   }
 
   override async login (userId: string): Promise<void> {
@@ -440,9 +436,9 @@ class PuppetGitter extends PUPPET.Puppet {
    */
   override async messageSendFile (
     conversationId : string,
-    fileBoxInterface        : FileBoxInterface,
+    fileBox        : FileBoxInterface,
   ): Promise<void> {
-    log.silly('PuppetGitter', 'messageSendFile(%s, %s)', conversationId, fileBoxInterface.name)
+    log.silly('PuppetGitter', 'messageSendFile(%s, %s)', conversationId, fileBox.name)
 
     /**
      * 1. Generate Signature
@@ -473,7 +469,7 @@ class PuppetGitter extends PUPPET.Puppet {
     const form = new FormData()
     form.append('signature', sig)
     form.append('params', params)
-    form.append('file', await fileBoxInterface.toBuffer(), { filename: fileBoxInterface.name })
+    form.append('file', await fileBox.toBuffer(), { filename: fileBox.name })
 
     const { status, statusText } = await Axios.post(uploadUrl, form, { headers: form.getHeaders() })
     if (status < 200 || status > 200) {
