@@ -147,6 +147,8 @@ class PuppetGitter extends PUPPET.Puppet {
   override async onStop (): Promise<void> {
     log.verbose('PuppetGitter', 'onStop()')
 
+    await this.logout()
+
     /**
       * Huan(202008): clean faye timer and intervals
       */
