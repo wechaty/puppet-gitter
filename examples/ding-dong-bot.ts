@@ -90,7 +90,7 @@ async function onMessage (payload: PUPPET.payloads.EventMessage) {
   const msgPayload = await puppet.messagePayload(payload.messageId)
   console.info(msgPayload)
 
-  const talkerId = msgPayload.fromId!
+  const talkerId = msgPayload.talkerId
   const talkerPayload = await puppet.contactPayload(talkerId)
   console.info(talkerPayload)
 

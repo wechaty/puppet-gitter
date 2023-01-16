@@ -379,10 +379,10 @@ class PuppetGitter extends PUPPET.Puppet {
     log.silly('PuppetGitter', 'messageRawPayloadParser(%s)', JSON.stringify(rawPayload))
 
     const basePayload = {
-      fromId        : rawPayload.fromUser.id,
       id            : rawPayload.id,
       mentionIdList : rawPayload.mentions.map(m => m.userId),
       roomId        : rawPayload.roomId!,
+      talkerId      : rawPayload.fromUser.id,
       text          : rawPayload.text,
       timestamp     : Date.now(),
     }

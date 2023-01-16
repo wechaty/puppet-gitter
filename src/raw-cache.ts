@@ -60,9 +60,9 @@ class RawCache {
      * LRU
      */
     const lruOptions: LRU.Options<string, GitterRoomMessagePayload> = {
-      dispose (key: string, val: any) {
-        log.silly('RawCache', `constructor() lruOptions.dispose(${key}, ${JSON.stringify(val)})`)
-      },
+      // dispose (key: string, val: any) {
+      //   log.silly('RawCache', `constructor() lruOptions.dispose(${key}, ${JSON.stringify(val)})`)
+      // },
       max:    1000,
       maxAge: 1000 * 60 * 60,
     }
